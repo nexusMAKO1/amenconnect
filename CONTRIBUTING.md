@@ -125,3 +125,4 @@ fix(auth): sanitize JWT token verification payload
 ## Reporting Security Issues
 
 Please **do not** report sensitive security vulnerabilities through public GitHub issues. Refer to [SECURITY.md](SECURITY.md) for instructions on confidential disclosure.
+

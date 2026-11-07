@@ -7,3 +7,4 @@ pymongo>=4.6.0
 pyrebase4>=4.8.0
 python-dotenv>=1.0.0
 together>=1.3.0
+

@@ -39,3 +39,4 @@ If you discover a security vulnerability within this project:
 1. **Environment Variables**: Always store sensitive credentials (JWT keys, DB passwords, Firebase tokens, mailer secrets) in `.env` files and never check them into source control.
 2. **HTTPS / TLS**: Always enforce HTTPS in production environments, especially for biometric data, webcam video conferences, and kiosk-to-backend communication.
 3. **Hardware Kiosks**: Isolate kiosk network traffic using dedicated VLANs and apply operating system lock-down policies (kiosk mode).
+

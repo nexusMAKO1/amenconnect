@@ -24,3 +24,4 @@ Detailed description of what occurred on the kiosk terminal.
 
 ### Diagnostic Logs
 Include excerpts from `api.py` or terminal browser console.
+
