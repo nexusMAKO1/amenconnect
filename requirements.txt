@@ -1,0 +1,9 @@
+# AmenConnect Python Services & Hardware Bridge Dependencies
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
+psutil>=5.9.0
+pymongo>=4.6.0
+pyrebase4>=4.8.0
+python-dotenv>=1.0.0
+together>=1.3.0

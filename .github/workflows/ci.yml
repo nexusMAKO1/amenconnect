@@ -1,0 +1,105 @@
+name: AmenConnect CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-check:
+    name: Backend Lint & Node Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate syntax
+        run: node -c server.js app.js
+
+  amenconnect-build:
+    name: AmenConnect Client Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AmenConnect
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: AmenConnect/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript Check & Vite Build
+        run: npm run build
+
+  amenkiosk-build:
+    name: AmenKiosk Client Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AmenKiosk
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: AmenKiosk/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript Check & Vite Build
+        run: npm run build
+
+  python-services-check:
+    name: Python Microservices Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Python Syntax & Flake8 Lint
+        run: |
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=node_modules,android,ios

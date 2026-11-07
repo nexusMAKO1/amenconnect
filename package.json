@@ -1,4 +1,20 @@
 {
+  "name": "amenconnect-ecosystem",
+  "version": "1.0.0",
+  "description": "AmenConnect - Omnichannel Digital Banking & Smart Self-Service Kiosk Terminal Ecosystem",
+  "private": true,
+  "scripts": {
+    "start:backend": "cd Backend && npm run start",
+    "dev:backend": "cd Backend && npm run dev",
+    "dev:client": "cd AmenConnect && npm run dev",
+    "dev:kiosk": "cd AmenKiosk && npm run dev",
+    "dev:bot": "cd bot && python3 app.py",
+    "dev:daemon": "python3 api.py",
+    "build:client": "cd AmenConnect && npm run build",
+    "build:kiosk": "cd AmenKiosk && npm run build",
+    "build:all": "npm run build:client && npm run build:kiosk",
+    "install:all": "cd Backend && npm install && cd ../AmenConnect && npm install && cd ../AmenKiosk && npm install"
+  },
   "dependencies": {
     "@capacitor/device": "^7.0.0",
     "@ionic/react": "^8.4.3",

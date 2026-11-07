@@ -23,8 +23,11 @@ firebase_config = {
     "storageBucket": "kiosk-b8f76.firebasestorage.app",
 }
 
-# Connect to MongoDB using your provided URI
-MONGO_URI = "mongodb+srv://backend:GpwHU0tIVU3Wsi2z@amenconnect.4vekp.mongodb.net/client?retryWrites=true&w=majority"
+# Connect to MongoDB using environment variable or provided URI
+MONGO_URI = os.getenv(
+    "MONGO_URI",
+    "mongodb+srv://backend:GpwHU0tIVU3Wsi2z@amenconnect.4vekp.mongodb.net/client?retryWrites=true&w=majority"
+)
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client.get_database()  # Uses the default database from the URI
 kiosks_collection = db.kiosks     # Assumes kiosks are stored in the 'kiosks' collection

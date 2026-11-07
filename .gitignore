@@ -1,4 +1,117 @@
-# Local Netlify folder
+# ==========================================
+# AmenConnect Root .gitignore
+# ==========================================
+
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Environment & Local Configuration
+.env
+.env*.local
+.env.backup
+.env.production
+.env.development
+.env.test
+*.env
+!.env.example
+!*/.env.example
+
+# Runtime & Application Logs
+logs/
+*.log
+Backend/admin-actions.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build Outputs & Bundles
+dist/
+build/
+www/
+out/
+.output/
+.vite/
+*.tsbuildinfo
+
+# Python Artifacts & Virtual Environments
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Cloud & Firebase Credentials
+firebaseadminsdk*.json
+*firebase*.json
+serviceAccountKey*.json
+*.pem
+*.key
+*.cert
+*.crt
+# Allow public dev certificates if explicitly needed
+!AmenConnect/public/server.key
+!AmenConnect/public/server.crt
+
+# Mobile Build Artifacts (Capacitor / Android / iOS)
+AmenConnect/android/.gradle/
+AmenConnect/android/app/build/
+AmenConnect/android/build/
+AmenConnect/ios/App/Pods/
+AmenConnect/ios/App/build/
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+cypress/videos/
+cypress/screenshots/
+.cypress-cache/
+
+# IDE & Editor Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / Scratch Files
+*.tmp
+*.temp
+temp*.txt
 .netlify
-node_modules
-firebaseadminsdk.json
+.eslintcache
