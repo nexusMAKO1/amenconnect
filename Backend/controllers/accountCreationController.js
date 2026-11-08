@@ -25,14 +25,29 @@ const generateAccountNumber = () => {
   return num;
 };
 
-// Configure nodemailer transporter (adjust service and auth as needed)
-const transporter = nodemailer.createTransport({
-  service: "gmail", // e.g., "gmail"
-  auth: {
-    user: process.env.EMAIL_USER, // set in your environment variables
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// Configure nodemailer transporter with support for local Mailpit / SMTP
+const getTransporter = () => {
+  if (process.env.SMTP_HOST) {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || "1025", 10),
+      secure: process.env.SMTP_SECURE === "true",
+      ignoreTLS: true,
+      auth: process.env.SMTP_USER ? {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      } : undefined,
+    });
+  }
+  return nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+};
+const transporter = getTransporter();
 
 // Helper: generate the email HTML content in French
 const generateAccountApprovedEmailHTML = (userEmail, generatedPassword) => {

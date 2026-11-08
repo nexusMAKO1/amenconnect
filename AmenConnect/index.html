@@ -43,20 +43,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
 
-    <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      connect-src 'self' ws: wss: http: https: https://open.er-api.com https://8x8.vc wss://*.firebaseio.com https://*.firebaseio.com;
-      script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://www.google.com https://www.gstatic.com https://8x8.vc https://*.firebaseio.com;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
-      img-src 'self' data: blob: https://picsum.photos https://*.tile.openstreetmap.org https://fastly.picsum.photos;
-      frame-src 'self' https://8x8.vc https://meet.jit.si https://*.firebaseio.com;
-    ">
-
-    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
-
     <script type="module" src="/src/main.tsx"></script>
   </head>
   <body>

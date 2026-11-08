@@ -43,6 +43,9 @@ const chatRoutes = require("./routes/chatRoutes")
 const creditRoutes = require("./routes/creditRoutes")
 const app = express()
 
+// Trust first proxy hop (Nginx reverse proxy)
+app.set("trust proxy", 1)
+
 // Middlewares
 app.use(helmet())
 app.use(express.json({ limit: "50mb" }))

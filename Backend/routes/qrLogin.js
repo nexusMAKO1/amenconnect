@@ -41,36 +41,74 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// GET endpoint: Check the status of a QR session and issue a token for the kiosk if authenticated
-// routes/qrLogin.js
-const Session = require("../models/Session"); // Import the Session model
+// GET endpoint: Check the status of a QR session and atomically redeem token for kiosk
+const Session = require("../models/Session");
 
 router.get("/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   try {
-    const sessionQR = await QRSession.findOne({ sessionId });
-    if (!sessionQR) return res.status(404).json({ message: "Session not found" });
+    const existing = await QRSession.findOne({ sessionId });
+    if (!existing) {
+      return res.status(404).json({ message: "Session not found or expired." });
+    }
 
-    if (sessionQR.status === "authenticated" && sessionQR.user) {
+    if (existing.status === "pending") {
+      return res.json({ status: "pending", user: null });
+    }
+
+    if (existing.status === "consumed") {
+      return res.status(409).json({
+        status: "consumed",
+        message: "QR session has already been redeemed.",
+      });
+    }
+
+    if (existing.status === "authenticated" && existing.user) {
+      // Atomic single-use redemption: exactly one concurrent request can transition from 'authenticated' to 'consumed'
+      const redeemedSession = await QRSession.findOneAndUpdate(
+        { sessionId, status: "authenticated" },
+        { $set: { status: "consumed", consumedAt: new Date() } },
+        { new: false }
+      );
+
+      if (!redeemedSession) {
+        return res.status(409).json({
+          status: "consumed",
+          message: "QR session has already been redeemed by a concurrent request.",
+        });
+      }
+
       // Create or update the corresponding session in the Session collection
       await Session.findOneAndUpdate(
-        { sessionId: sessionQR.sessionId },
-        { user: sessionQR.user, status: sessionQR.status, updatedAt: new Date() },
+        { sessionId: redeemedSession.sessionId },
+        { user: redeemedSession.user, status: "authenticated", updatedAt: new Date() },
         { upsert: true, new: true }
       );
 
       // Generate a new token for the kiosk
-      const token = jwt.sign({ id: sessionQR.user, sessionId: sessionQR.sessionId }, process.env.JWT_SECRET, { expiresIn: "1h" });
+      const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
+      const token = jwt.sign(
+        { id: redeemedSession.user, sessionId: redeemedSession.sessionId },
+        process.env.JWT_SECRET || "fallback_secret",
+        { expiresIn: "1h" }
+      );
+
       res.cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecure,
         sameSite: "lax",
       });
-      return res.json({ status: sessionQR.status, user: sessionQR.user, token });
+
+      return res.json({
+        status: "authenticated",
+        user: redeemedSession.user,
+        token,
+      });
     }
-    return res.json({ status: sessionQR.status, user: sessionQR.user });
+
+    return res.json({ status: existing.status, user: existing.user });
   } catch (error) {
-    console.error(error);
+    console.error("Error retrieving/redeeming QR session:", error);
     return res.status(500).json({ message: "Server error" });
   }
 });

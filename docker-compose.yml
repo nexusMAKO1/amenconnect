@@ -65,6 +65,8 @@ services:
       - SESSION_SECRET=${SESSION_SECRET:-super_secret_session_key_amenconnect_change_me}
       - EMAIL_USER=${EMAIL_USER:-noreply@amenbank.com.tn}
       - EMAIL_PASS=${EMAIL_PASS:-smtp_password}
+      - SMTP_HOST=${SMTP_HOST:-mailpit}
+      - SMTP_PORT=${SMTP_PORT:-1025}
       - FLASK_API_URL=http://bot:5000
       - KIOSK_MAINTENANCE_PASSWORD=${KIOSK_MAINTENANCE_PASSWORD}
       - JAAS_APP_ID=${JAAS_APP_ID:-}
@@ -74,6 +76,8 @@ services:
       mongodb:
         condition: service_healthy
       bot:
+        condition: service_healthy
+      mailpit:
         condition: service_healthy
     networks:
       - amenconnect_net
@@ -152,6 +156,25 @@ services:
       - amenconnect_net
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+  # ------------------------------------------
+  # 7. Mailpit Local SMTP Testing Server & API
+  # ------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: amenconnect-mailpit
+    restart: unless-stopped
+    ports:
+      - "${SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - amenconnect_net
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -z 127.0.0.1 1025 || exit 1" ]
       interval: 10s
       timeout: 5s
       start_period: 5s

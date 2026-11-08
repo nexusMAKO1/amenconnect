@@ -4,7 +4,13 @@ const Compte = require("../models/Compte");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
-const { generateRIB, DOMICILIATION } = require("../config/helper");
+const {
+  generateAccountNumber,
+  buildCompleteRIB,
+  generateRIB,
+  generateIBAN,
+  DOMICILIATION,
+} = require("../config/helper");
 const Session = require("../models/Session");
 const crypto = require("crypto");
 const UAParser = require('ua-parser-js');
@@ -28,14 +34,29 @@ const getIPInfo = async () => {
   }
 };
 
-// Configure nodemailer transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail", // For production, consider using OAuth2 or another secure option
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// Configure nodemailer transporter with support for local Mailpit / SMTP
+const getTransporter = () => {
+  if (process.env.SMTP_HOST) {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || "1025", 10),
+      secure: process.env.SMTP_SECURE === "true",
+      ignoreTLS: true,
+      auth: process.env.SMTP_USER ? {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      } : undefined,
+    });
+  }
+  return nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+};
+const transporter = getTransporter();
 
 // Generate a 6-digit OTP
 const generateOTP = () => {
@@ -102,12 +123,6 @@ const sendOTPEmail = async (email, otp) => {
   return transporter.sendMail(mailOptions);
 };
 
-// Helper: generate a unique account number
-const generateAccountNumber = () => {
-  // This is a simple example – in production, ensure that generated numbers are unique
-  return Math.floor(100000000 + Math.random() * 900000000).toString();
-};
-
 // Available compte types with default values
 const compteTypes = {
   "Compte courant": {
@@ -140,14 +155,16 @@ exports.register = async (req, res) => {
     await user.save();
 
     const compteDocuments = comptes.map(type => {
-      const accountNumber = generateAccountNumber(); // Should be 11 characters
-      const rib = generateRIB(accountNumber); // Full RIB string
+      const accountNumber = generateAccountNumber(); // 13-digit Tunisian account number
+      const completeRIB = buildCompleteRIB(accountNumber); // 20-digit Tunisian RIB
+      const iban = (generateIBAN || generateRIB)(completeRIB); // 24-character Tunisian IBAN
       return {
         userId: user._id,
         numéroCompte: accountNumber,
         solde: 0.0,
         type,
-        RIB: rib,
+        RIB: completeRIB,
+        IBAN: iban,
         domiciliation: DOMICILIATION,
         ...compteTypes[type],
         historique: []
@@ -182,14 +199,16 @@ exports.addCompte = async (req, res) => {
     }
 
     const accountNumber = generateAccountNumber();
-    const rib = generateRIB(accountNumber);
+    const completeRIB = buildCompleteRIB(accountNumber);
+    const iban = (generateIBAN || generateRIB)(completeRIB);
 
     const newCompte = new Compte({
       userId,
       numéroCompte: accountNumber,
       solde: 0.0,
       type,
-      RIB: rib,
+      RIB: completeRIB,
+      IBAN: iban,
       domiciliation: DOMICILIATION,
       ...compteTypes[type],
       historique: []
