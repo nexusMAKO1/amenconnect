@@ -155,14 +155,43 @@ async function run() {
   assert(successCount === 1, `Exactly ONE concurrent request succeeded in token redemption (got ${successCount})`);
   assert(conflictCount === 4, `Exactly 4 concurrent requests were atomically rejected with 409 (got ${conflictCount})`);
 
-  // Step 7: Non-existent or expired session
-  const expiredRes = await request({
+  // Step 7: Non-existent session
+  const notFoundRes = await request({
     hostname: "localhost",
     port: 3000,
     path: `/api/qr-login/non-existent-session-id`,
     method: "GET",
   });
-  assert(expiredRes.status === 404, "Non-existent / expired session returns HTTP 404");
+  assert(notFoundRes.status === 404, "Non-existent session returns HTTP 404");
+
+  // Step 8: Expired session document in MongoDB (pre-TTL cleanup)
+  const preTtlExpiredSessionId = "session-pre-ttl-expired-" + Date.now();
+  execSync(`docker exec amenconnect-backend node -e '
+    const mongoose = require("mongoose");
+    const QRSession = require("./models/QRSession");
+    const User = require("./models/User");
+    mongoose.connect(process.env.MONGO_URI || "mongodb://mongodb:27017/client").then(async () => {
+      const user = await User.findOne();
+      // Insert a document created 90 seconds ago (expired by TTL, but before MongoDB TTL worker deletes it)
+      await QRSession.create({
+        sessionId: "${preTtlExpiredSessionId}",
+        status: "authenticated",
+        user: user._id,
+        createdAt: new Date(Date.now() - 90 * 1000)
+      });
+      process.exit(0);
+    });
+  '`);
+
+  const preTtlRedeem = await request({
+    hostname: "localhost",
+    port: 3000,
+    path: `/api/qr-login/${preTtlExpiredSessionId}`,
+    method: "GET",
+  });
+  assert(preTtlRedeem.status === 410, `Expired session (before TTL purge) is rejected with HTTP 410 Gone (got ${preTtlRedeem.status})`);
+  assert(preTtlRedeem.body.status === "expired", "Expired session returns status 'expired'");
+  assert(!preTtlRedeem.body.token, "Expired session yields NO token");
 
   console.log("-------------------------------------------------");
   console.log(`Results: ${passed} of ${total} QR security tests passed.`);

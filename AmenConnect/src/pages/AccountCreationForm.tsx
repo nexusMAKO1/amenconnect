@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { IonIcon } from "@ionic/react"
+import { IonIcon, useIonToast } from "@ionic/react"
 import { arrowBack } from "ionicons/icons"
 import "./AccountCreationForm.css"
 import type { FormData, SignatureCanvasRef } from "./../components/accountcreationform/types"
@@ -18,6 +18,7 @@ interface AccountCreationFormProps {
 }
 
 const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, resetTimer }) => {
+  const [presentToast] = useIonToast()
   const [currentPage, setCurrentPage] = useState(1)
   const [formData, setFormData] = useState<FormData>({
     nom: "",
@@ -460,15 +461,30 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, reset
     
         if (response.ok) {
           const data = await response.json();
-          alert(data.message || "Votre demande a été soumise avec succès. Nous vous contacterons bientôt.");
+          presentToast({
+            message: data.message || "Votre demande a été soumise avec succès. Nous vous contacterons bientôt.",
+            duration: 3500,
+            color: "success",
+            position: "top",
+          });
           onBack();
         } else {
           const errorData = await response.json();
-          alert("Erreur: " + errorData.error);
+          presentToast({
+            message: "Erreur: " + errorData.error,
+            duration: 3500,
+            color: "danger",
+            position: "top",
+          });
         }
       } catch (error) {
         console.error("Error submitting form:", error);
-        alert("Une erreur est survenue lors de l'envoi de la demande");
+        presentToast({
+          message: "Une erreur est survenue lors de l'envoi de la demande",
+          duration: 3500,
+          color: "danger",
+          position: "top",
+        });
       }
     };
     

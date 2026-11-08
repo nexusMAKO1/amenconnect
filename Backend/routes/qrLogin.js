@@ -23,13 +23,16 @@ router.post("/create", async (req, res) => {
 
 
 // POST endpoint: Authenticate a QR session using the authenticated mobile user
+const QR_TTL_MS = 60 * 1000;
+
 router.post("/", verifyToken, async (req, res) => {
   const { sessionId } = req.body;
   // req.user is set by the verifyToken middleware from the mobile's token
   const userId = req.user.id;
   try {
-    const session = await QRSession.findOne({ sessionId });
-    if (!session) return res.status(404).json({ message: "Session not found" });
+    const cutoff = new Date(Date.now() - QR_TTL_MS);
+    const session = await QRSession.findOne({ sessionId, createdAt: { $gte: cutoff } });
+    if (!session) return res.status(404).json({ message: "Session not found or expired" });
 
     session.status = "authenticated";
     session.user = userId;
@@ -47,8 +50,13 @@ const Session = require("../models/Session");
 router.get("/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   try {
-    const existing = await QRSession.findOne({ sessionId });
+    const cutoff = new Date(Date.now() - QR_TTL_MS);
+    const existing = await QRSession.findOne({ sessionId, createdAt: { $gte: cutoff } });
     if (!existing) {
+      const expiredSession = await QRSession.findOne({ sessionId });
+      if (expiredSession) {
+        return res.status(410).json({ status: "expired", message: "QR session has expired." });
+      }
       return res.status(404).json({ message: "Session not found or expired." });
     }
 
@@ -64,14 +72,18 @@ router.get("/:sessionId", async (req, res) => {
     }
 
     if (existing.status === "authenticated" && existing.user) {
-      // Atomic single-use redemption: exactly one concurrent request can transition from 'authenticated' to 'consumed'
+      // Atomic single-use redemption: checks sessionId, status='authenticated', AND createdAt >= cutoff in the exact same query
       const redeemedSession = await QRSession.findOneAndUpdate(
-        { sessionId, status: "authenticated" },
+        { sessionId, status: "authenticated", createdAt: { $gte: cutoff } },
         { $set: { status: "consumed", consumedAt: new Date() } },
         { new: false }
       );
 
       if (!redeemedSession) {
+        const currentCheck = await QRSession.findOne({ sessionId });
+        if (!currentCheck || currentCheck.createdAt < cutoff) {
+          return res.status(410).json({ status: "expired", message: "QR session has expired." });
+        }
         return res.status(409).json({
           status: "consumed",
           message: "QR session has already been redeemed by a concurrent request.",

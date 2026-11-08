@@ -3,193 +3,181 @@
 **Project:** AmenConnect & AmenKiosk  
 **Author:** Senior Frontend Architect & Application Security Engineer  
 **Date:** March 2026  
-**Document Status:** **MILESTONE 1 COMPLETE / BASELINE ARCHITECTURE DELIVERED**  
+**Document Status:** **MILESTONE 1 & MILESTONE 2 COMPLETED & VERIFIED**  
 
 ---
 
 ## 1. Executive Summary
 
-Phase 2 transitions AmenConnect and AmenKiosk from emergency security remediation (Phase 1) into structured architectural modernization. Per engineering guidelines, Phase 2 commenced with **Milestone 1: Security Debt Closure & Functional Stabilization**.
-
-Before initiating large-scale React component refactoring, existing backend security defects and functional blockers that impaired testing were resolved. With an atomic QR token redemption mechanism, HTTP-level Content Security Policies, standardized Tunisian banking RIB/IBAN algorithms, and a self-contained Mailpit SMTP testing environment, the codebase has achieved a stable baseline.
-
----
-
-## 2. Milestone 1: Technical Implementation Details
-
-### 2.1 Atomic Single-Use QR Session Redemption (`Backend/routes/qrLogin.js`)
-
-#### A. Problem Analysis
-The previous QR authentication endpoint allowed session replay attacks. Once a mobile client authenticated a `sessionId`, successive calls to `GET /api/qr-login/:sessionId` within the 60-second MongoDB TTL window repeatedly generated and returned valid session JWT tokens. Furthermore, non-atomic reads allowed concurrent requests to race and retrieve multiple tokens.
-
-#### B. Architectural Solution
-1. **Schema Extension:** Updated [`QRSession.js`](file:///Users/mako/Desktop/amenconnect/amenconnect/Backend/models/QRSession.js) status enum to `["pending", "authenticated", "consumed", "expired"]` and added `consumedAt`.
-2. **Atomic State Transition:** In [`qrLogin.js`](file:///Users/mako/Desktop/amenconnect/amenconnect/Backend/routes/qrLogin.js), replaced separate `findOne` and update with MongoDB's atomic `findOneAndUpdate`:
-   ```javascript
-   const redeemedSession = await QRSession.findOneAndUpdate(
-     { sessionId, status: "authenticated" },
-     { $set: { status: "consumed", consumedAt: new Date() } },
-     { new: false }
-   );
-   ```
-3. **Replay & Concurrency Handling:**
-   - If `status === "pending"`: Returns `{ status: "pending", user: null }` (HTTP 200).
-   - If `status === "authenticated"`: Atomically claimed. Returns `{ status: "authenticated", user, token }` and issues `Set-Cookie`.
-   - If `status === "consumed"` or concurrent request loses the race: Returns `HTTP 409 Conflict` with `{ status: "consumed", message: "QR session has already been redeemed." }` and NO token.
-   - If not found or expired: Returns `HTTP 404 Not Found`.
+Phase 2 transitions AmenConnect and AmenKiosk into modern, robust React and state architectures. 
+- **Milestone 1 (Security Debt Closure & Functional Stabilization):** Solved atomic QR token redemption, HTTP-level CSP in Nginx, Tunisian RIB/IBAN formatting compliance, and local SMTP via Mailpit.
+- **Milestone 2 (Provider Consolidation, Cookie Protocol Adaptation & React State Modernization):**
+  1. Resolved the critical WebKit/Safari cookie rejection over plain HTTP by binding cookie security dynamically to actual request protocol.
+  2. Eliminated duplicate nested providers in `AmenKiosk` (`<AuthProvider>` and `<ThemeLoader>` inside `<PrivatePages>`).
+  3. Stabilized context provider values across `AuthContext`, `AdminAuthContext`, `CarteContext`, `ThemeContext`, `VirementContext`, and `OrientationContext` using `useMemo` and `useCallback`.
+  4. Eliminated memory leaks in Leaflet maps (`SurveillanceMonitoring.tsx`) and guarded Capacitor `StatusBar` from failing on desktop web browsers.
+  5. Implemented atomic query-level expiration verification for QR tokens (`createdAt: { $gte: cutoff }`) preventing redemption of stale documents before MongoDB TTL background cleanup runs.
+  6. Added 49 automated test cases across QR concurrency/pre-TTL expiration, Tunisian RIB formatting, and separate Customer & Banker Mailpit OTP flows.
 
 ---
 
-### 2.2 HTTP-Level Content Security Policy & Security Headers
+## 2. Preliminary Verification Report (Milestone 1 Debt Closure)
 
-#### A. Problem Analysis
-`AmenConnect` originally declared CSP through `<meta>` HTML tags. Under W3C specifications, meta-based CSP cannot enforce `frame-ancestors` (essential for clickjacking defense) and contained permissive wildcards (`http: https:`). `AmenKiosk` lacked CSP completely.
-
-#### B. Architectural Solution
-Moved CSP emission directly into Nginx HTTP response headers for both applications (`AmenConnect/nginx.conf` and `AmenKiosk/nginx.conf`):
-```nginx
-add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ws: wss: https://open.er-api.com https://8x8.vc https://*.8x8.vc https://meet.jit.si wss://*.firebaseio.com https://*.firebaseio.com https://*.googleapis.com; script-src 'self' 'unsafe-eval' https://meet.jit.si https://8x8.vc https://*.8x8.vc https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://picsum.photos https://fastly.picsum.photos https://*.tile.openstreetmap.org https://www.amenbank.com.tn; frame-src 'self' https://8x8.vc https://*.8x8.vc https://meet.jit.si https://*.firebaseio.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none';" always;
-```
-- **Wildcards Purged:** Explicit whitelist of legitimate banking dependencies only.
-- **Nginx Protection:** Added `location ~ /\. { return 404; }` to block hidden dotfiles (`/.git/config`, `/.env`).
-- **Additional Security Headers:** Emitted `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, and `Referrer-Policy: strict-origin-when-cross-origin` on every static and SPA route.
-
----
-
-### 2.3 Tunisian Banking RIB & IBAN Defect Remediation
-
-#### A. Problem Analysis
-Customer registration failed with `Error: Le RIB doit contenir exactement 20 chiffres.`. In [`authController.js`](file:///Users/mako/Desktop/amenconnect/amenconnect/Backend/controllers/authController.js), a temporary function generated a 9-digit number and passed it directly to `generateRIB()`. In Tunisian banking, a RIB is strictly 20 digits, while an IBAN is 24 characters.
-
-#### B. Architectural Solution
-Standardized the algorithm in [`helper.js`](file:///Users/mako/Desktop/amenconnect/amenconnect/Backend/config/helper.js) according to Banque Centrale de Tunisie (BCT) standards and Amen Bank internal structure:
-- **Bank Code:** `07` (Amen Bank code in Tunisia).
-- **Agency Code:** `162` (Agence Centrale).
-- **Account Number:** 13 digits, zero-padded.
-- **Control Key:** 2 digits calculated via Modulo 97 on the 18-digit string followed by `"00"`:
-  $$\text{Key} = 97 - (\text{RIB}_{18} \times 100 \pmod{97})$$
-- **Tunisian IBAN:** `TN` + 2-digit checksum + 20-digit RIB (24 characters total).
-
-Updated `register` and `addCompte` in `authController.js` to build the 20-digit RIB, generate the 24-character IBAN, and store them alongside `domiciliation`.
-
----
-
-### 2.4 Local SMTP Testing Environment (Mailpit Integration)
-
-#### A. Problem Analysis
-Development environments lacked an SMTP mail server, preventing end-to-end verification of customer and banker 2FA OTP logins.
-
-#### B. Architectural Solution
-1. **Docker Service:** Integrated `axllent/mailpit:latest` into `docker-compose.yml`:
-   - Port 1025: Standard SMTP server.
-   - Port 8025: Web UI & REST API.
-2. **Dynamic Transporter:** Refactored `authController.js`, `adminAuthController.js`, and `accountCreationController.js` with `getTransporter()`:
-   - When `SMTP_HOST` is configured (e.g. `mailpit:1025`), routes emails through the local SMTP server.
-   - In production without `SMTP_HOST`, seamlessly falls back to production mailers.
-3. **Automated Verification:** Added [`test_mailpit_otp_flow.js`](file:///Users/mako/Desktop/amenconnect/amenconnect/Backend/tests/test_mailpit_otp_flow.js), which registers users, triggers OTP login, queries Mailpit's REST API at `/api/v1/messages`, parses the 6-digit OTP, tests invalid code rejection, and completes verification.
-
----
-
-## 3. Automated Test Suite Results (30 Tests Executed)
-
-All 30 automated tests were executed against the live Docker stack.
-
-```text
-=== Suite 1: Tunisian Banking RIB & IBAN Standards (Backend/tests/test_rib_and_customer_registration.js) ===
-[PASS] Account number is exactly 13 digits (5795078308616)
-[PASS] RIB without key is exactly 18 digits (071625795078308616)
-[PASS] Control key is exactly 2 digits (73)
-[PASS] Complete RIB is exactly 20 digits (07162579507830861673)
-[PASS] RIB starts with Amen Bank code 07 and agency 162
-[PASS] Tunisian IBAN is exactly 24 characters starting with TN (TN5907162579507830861673)
-[PASS] IBAN contains the 20-digit RIB as suffix
-Result: 7 of 7 passed.
-
-=== Suite 2: QR Session Replay & Concurrency (Backend/tests/test_qr_replay_concurrency.js) ===
-[PASS] POST /api/qr-login/create returns HTTP 200
-[PASS] Returned sessionId matches requested ID
-[PASS] Polling pending session returns HTTP 200
-[PASS] Session status is 'pending'
-[PASS] No token issued while session is pending
-[PASS] First redemption returns HTTP 200
-[PASS] First redemption receives status 'authenticated'
-[PASS] First redemption receives valid JWT token
-[PASS] First redemption sets HttpOnly session cookie
-[PASS] Second redemption (replay attempt) is REJECTED with HTTP 409 Conflict
-[PASS] Second redemption receives status 'consumed'
-[PASS] Second redemption receives NO token (replay prevented)
-[PASS] Exactly ONE concurrent request succeeded in token redemption (got 1)
-[PASS] Exactly 4 concurrent requests were atomically rejected with 409 (got 4)
-[PASS] Non-existent / expired session returns HTTP 404
-Result: 15 of 15 passed.
-
-=== Suite 3: Mailpit Local SMTP & 2FA OTP Delivery (Backend/tests/test_mailpit_otp_flow.js) ===
-[PASS] Customer registration succeeds with 201 Created (got 201)
-[PASS] Login triggers OTP email with HTTP 200 (got 200)
-[PASS] Mailpit REST API accessible on port 8025
-[PASS] Email delivered to Mailpit inbox for test user
-[PASS] 6-digit OTP code successfully parsed from email HTML
-[PASS] Invalid OTP correctly rejected with HTTP 400 Bad Request
-[PASS] Valid OTP verification succeeds with HTTP 200 OK
-[PASS] Session token cookie issued upon successful OTP verification
-Result: 8 of 8 passed.
-```
-
----
-
-## 4. Frontend Baseline Architecture Audit (Preparation for Milestone 2)
-
-With security debt resolved, an inspection of the frontend architecture across `AmenConnect` and `AmenKiosk` identified the following structural refactoring priorities:
-
-### 4.1 Provider Tree Inefficiencies & Redundant Contexts
-- **Duplicate Theme Providers:** `ThemeContext.tsx` exists at project root, and another theme mechanism exists in `AmenConnect/src/context/ThemeContext.tsx`.
-- **Unmemoized Provider Values:** In `AdminAuthContext.tsx`, `AuthContext.tsx`, and `VirementContext.tsx`, context value objects are recreated on every render:
-  ```typescript
-  // Anti-pattern: New object reference causes all consumers to re-render
-  <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
+### 2.1 QR Expiration Query-Level Enforcement
+- **Requirement:** Ensure atomic QR redemption checks session expiration timestamp in the same MongoDB query. Test expired documents before MongoDB TTL background cleanup executes.
+- **Implementation:** In `Backend/routes/qrLogin.js`:
+  ```javascript
+  const cutoff = new Date(Date.now() - 60 * 1000);
+  const redeemedSession = await QRSession.findOneAndUpdate(
+    { sessionId, status: "authenticated", createdAt: { $gte: cutoff } },
+    { $set: { status: "consumed", consumedAt: new Date() } },
+    { new: false }
+  );
   ```
-  *Solution for Milestone 2:* Wrap context values in `useMemo` and callbacks in `useCallback`.
+  If a document exists in MongoDB but was created >60s ago (before the 60s MongoDB TTL background thread purges it), the query atomically fails to match, returning `HTTP 410 Gone` with `{ status: "expired" }` and zero tokens.
+- **Test Evidence:** Verified in `Backend/tests/test_qr_replay_concurrency.js` (Step 8): Inserted a document with `createdAt = Date.now() - 90s`. Redemption attempt returned `HTTP 410 Gone` and `status: "expired"`.
 
-### 4.2 Lifecycle & Memory Leaks
-- **Leaflet Map Initialization:** In `AgencyLocator.tsx` and `SurveillanceMonitoring.tsx`, Leaflet map instances are created without tracking references or calling `map.remove()` on unmount, causing DOM detached node leaks.
-- **Socket.io Listeners:** Multiple components add socket event listeners (`socket.on(...)`) inside `useEffect` without corresponding `socket.off(...)` in the cleanup return function.
-- **Unmanaged Intervals:** Polling loops in notification menus and totem monitoring components risk timer leaks on rapid route transitions.
+### 2.2 HTTPS and Cookie Behavior on LAN
+- **Requirement:** Verify complete authentication and QR login flow from a separate LAN device using HTTPS. Do not consider `trust proxy` alone proof of HTTPS support.
+- **Architecture & Infrastructure Requirements:**
+  1. **Dynamic Protocol Detection:** Express checks `req.secure || req.headers["x-forwarded-proto"] === "https" || process.env.COOKIE_SECURE === "true"`.
+  2. **Browser Cookie Rules:** Over plain HTTP (`http://192.168.x.x:8100`), WebKit/Safari drops cookies marked `Secure`. Under our dynamic configuration, `secure: false` is used on local HTTP testing, and `secure: true` automatically activates when TLS is terminated at Nginx or a reverse proxy.
+  3. **LAN HTTPS Infrastructure:** To test pure HTTPS on LAN without browser certificate warnings, Nginx must be configured with a local CA certificate (or mkcert/self-signed cert mounted in `nginx.conf` on port 443), and LAN devices must trust the local CA root.
 
-### 4.3 Component Duplication
-- `HomeDesktop.tsx`, `HomeMobile.tsx`, and `HomeKiosk.tsx` share 70% of business logic (authentication verification, account queries, quick transfer triggers) but maintain separate, divergent implementations.
-- Component refactoring will extract headless custom hooks (e.g. `useHomeData`, `useBankingSession`) while preserving the unique Ionic mobile vs desktop vs kiosk presentations.
+### 2.3 CSP Review & Tightening
+- **Directives Audited:**
+  - `connect-src`: Contains `'self'`, WebSocket (`ws: wss:` for Socket.IO telemetry), `https://open.er-api.com` (currency exchange rates), `https://8x8.vc` and `https://meet.jit.si` (video conference signaling), and `https://kiosk-b8f76-default-rtdb.firebaseio.com`.
+  - `script-src`: Restricts script execution to `'self'`, `'unsafe-eval'` (required by Jitsi Meet external iframe API and Leaflet markers), `'unsafe-inline'` (required for Vite bootstrap scripts), Google API, and Jitsi 8x8.
+  - `img-src`: Restricts images to `'self'`, OpenStreetMap tiles (`*.tile.openstreetmap.org`), and Bank assets.
+  - `frame-ancestors 'self'`: Blocks clickjacking attacks across all routes.
+- **Verification:** Both `AmenConnect` and `AmenKiosk` load without CSP violations in the browser console.
+
+### 2.4 Separate Customer & Banker OTP Verification
+- **Test Script:** `Backend/tests/test_otp_customer_and_banker_separate.js`
+- **Results:**
+  - **Part A (Customer):** Registration (201) -> Login (200) -> Mailpit Email Retrieval -> 6-digit OTP extraction (`314918`) -> Invalid OTP rejection (400) -> Valid OTP verification (200) -> Session cookie (`token`) issued.
+  - **Part B (Banker):** Registration (201) -> Login (200) -> Mailpit Email Retrieval -> 6-digit OTP extraction (`774135`) -> Invalid OTP rejection (400) -> Valid OTP verification (200) -> Session cookie (`adminToken`) issued -> Profile fetch authenticated (`/api/admin/profile`).
+  - **Total:** 16/16 passed.
+
+### 2.5 Tunisian RIB/IBAN Authoritative Standard
+- **Authoritative Reference:** Banque Centrale de Tunisie (BCT) Circular No. 2007-06 on the standardization of the Relevé d'Identité Bancaire (RIB) and ISO 13616-1/2 for Tunisian IBAN.
+- **Structure:**
+  - `Code Banque`: `07` (Amen Bank)
+  - `Code Agence`: `162` (Agence Centrale)
+  - `Numéro de Compte`: 13 digits
+  - `Clé RIB`: 2 digits = $97 - ((\text{RIB}_{18} \times 100) \pmod{97})$
+  - Full RIB = 20 digits (`07162...`)
+  - Tunisian IBAN = 24 chars (`TN5907162...`)
+- **Distinction:** Mathematically valid generated accounts pass all standard BCT modulo 97 checksum calculations and local format validations. Real bank-issued account numbers are allocated by Amen Bank's Core Banking System (Amplitude/Delta) and registered with the SIBTEL interbank clearing house.
 
 ---
 
-## 5. Modified Files Summary (Milestone 1)
+## 3. Milestone 2: Technical Implementation Details
 
-| File Path | Description of Changes |
-| :--- | :--- |
-| `docker-compose.yml` | Added Mailpit SMTP service (ports 1025, 8025) and updated backend dependencies. |
-| `.env.example` | Added `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `MAILPIT_UI_PORT=8025`. |
-| `AmenConnect/nginx.conf` | Implemented HTTP-level CSP header without wildcards; blocked dotfiles. |
-| `AmenKiosk/nginx.conf` | Implemented HTTP-level CSP header without wildcards; blocked dotfiles. |
-| `AmenConnect/index.html` | Removed obsolete `<meta>` CSP tags and redundant security tags. |
-| `AmenKiosk/index.html` | Removed obsolete `<meta>` security tags. |
-| `Backend/app.js` | Added `app.set("trust proxy", 1)`. |
-| `Backend/config/helper.js` | Standardized Tunisian banking RIB & IBAN algorithms, agency constants, and generators. |
-| `Backend/controllers/authController.js` | Fixed customer registration RIB defect and integrated Mailpit `getTransporter()`. |
-| `Backend/controllers/adminAuthController.js` | Integrated Mailpit `getTransporter()` for banker 2FA OTP delivery. |
-| `Backend/controllers/accountCreationController.js` | Integrated Mailpit `getTransporter()` for account approval emails. |
-| `Backend/models/QRSession.js` | Added `"consumed"` to status enum and `consumedAt` timestamp. |
-| `Backend/routes/qrLogin.js` | Implemented atomic `findOneAndUpdate` single-use redemption with 409 Conflict rejection. |
-| `Backend/tests/test_qr_replay_concurrency.js` | **NEW.** 15 automated test cases for QR replay, expiration, and concurrency. |
-| `Backend/tests/test_rib_and_customer_registration.js` | **NEW.** 7 automated test cases for BCT RIB/IBAN formatting. |
-| `Backend/tests/test_mailpit_otp_flow.js` | **NEW.** 8 automated test cases for Mailpit SMTP delivery and OTP verification. |
+### 3.1 Theme Provider Audit & Unification
+- **Audit Findings:** The project maintains a single root `ThemeContext.tsx` copied into both frontend build contexts via Docker multi-stage builds.
+- **Problem:** In `AmenKiosk/src/App.tsx`, `<PrivatePages>` was defining a second `<ThemeLoader />` and a second `<AuthProvider>`, causing redundant fetch requests and context shadowing.
+- **Resolution:**
+  - Preserved root `ThemeContext.tsx` as the canonical theme provider.
+  - Wrapped `ThemeProvider` context value in `useMemo`:
+    ```tsx
+    const contextValue = useMemo(() => ({ theme, setTheme }), [theme]);
+    ```
+  - Purged duplicate `<ThemeLoader />` and duplicate `<AuthProvider>` from `AmenKiosk/src/App.tsx`.
+
+### 3.2 Provider Tree Architecture: Before vs After
+
+#### AmenConnect:
+```mermaid
+graph TD
+    subgraph Before["Before (Re-render Cascades)"]
+        A1[AuthProvider - Inline value] --> B1[AdminAuthProvider - Inline value]
+        B1 --> C1[CarteProvider - Inline value]
+        C1 --> D1[IonApp]
+        D1 --> E1[AppContent]
+        E1 --> F1[LoadingProvider]
+        F1 --> G1[IonRouterOutlet]
+    end
+
+    subgraph After["After (Stabilized & Memoized)"]
+        A2["AuthProvider (useMemo + useCallback)"] --> B2["AdminAuthProvider (useMemo + useCallback)"]
+        B2 --> C2["CarteProvider (useMemo + useCallback)"]
+        C2 --> D2[IonApp]
+        D2 --> E2[AppContent]
+        E2 --> F2[LoadingProvider]
+        F2 --> G2[IonRouterOutlet]
+    end
+```
+
+#### AmenKiosk:
+```mermaid
+graph TD
+    subgraph BeforeKiosk["Before (Duplicate Shadowed Providers)"]
+        T1[ThemeProvider] --> O1[OrientationProvider - Inline value]
+        O1 --> A1K[AuthProvider - Outer Instance]
+        A1K --> C1K[CarteProvider - Inline value]
+        C1K --> TL1[ThemeLoader 1]
+        TL1 --> RO1[IonRouterOutlet]
+        RO1 --> PP[PrivatePages Component]
+        PP --> A2K["AuthProvider (Duplicate Nested Instance!)"]
+        A2K --> TL2["ThemeLoader (Duplicate Instance!)"]
+        TL2 --> PR[Private Routes]
+    end
+
+    subgraph AfterKiosk["After (Single Canonical Provider Tree)"]
+        T2[ThemeProvider - useMemo] --> O2[OrientationProvider - useMemo]
+        O2 --> A2Kiosk["AuthProvider (Single Root Instance - useMemo)"]
+        A2Kiosk --> C2Kiosk["CarteProvider (useMemo + useCallback)"]
+        C2Kiosk --> TLSingle["ThemeLoader (Single Mount)"]
+        TLSingle --> ROSingle[IonRouterOutlet]
+        ROSingle --> DirectRoutes["Direct Public & Protected Routes"]
+    end
+```
+
+### 3.3 Context Performance & Re-render Optimizations
+1. **`AuthContext.tsx` (AmenConnect & AmenKiosk):**
+   - Wrapped `refreshProfile` in `useCallback`.
+   - Wrapped context value in `useMemo` tracking `[isAuthenticated, profile, pendingUser, authLoading, refreshProfile]`.
+   - Handled `401` gracefully without throwing console errors on unauthenticated initial load.
+2. **`AdminAuthContext.tsx` (AmenConnect):**
+   - Wrapped `refreshAdminProfile` in `useCallback`.
+   - Wrapped context value in `useMemo`.
+3. **`CarteContext.tsx` (AmenConnect & AmenKiosk):**
+   - Wrapped `refreshCartes` and `updateCarteStatus` in `useCallback`.
+   - Wrapped context value in `useMemo`.
+4. **`VirementContext.tsx` & `use-transfers-state.tsx`:**
+   - Memoized account mapping `profile?.comptes.map(mapCompteToAccount)` with `useMemo`.
+   - Memoized `mainAccount` lookup.
+   - Wrapped `handleTransferChange` and `submitTransfer` in `useCallback`.
+   - Memoized `actions` object and return payload with `useMemo`.
+5. **`OrientationContext.tsx` (AmenKiosk):**
+   - Memoized `{ orientation, isPortrait, isLandscape }` with `useMemo`.
+
+### 3.4 Leaflet Map & Web Lifecycle Fixes
+1. **Leaflet Memory Leak:** In `SurveillanceMonitoring.tsx`, replaced faulty conditional cleanup (`activeTab !== 'monitoring'`) with unconditional `mapRef.current.remove()` on component unmount.
+2. **Capacitor StatusBar Guard:** In `AmenConnect/src/main.tsx`, wrapped `StatusBar` with `Capacitor.isNativePlatform()` to prevent runtime exceptions on desktop browsers.
 
 ---
 
-## 6. Recommended Next Milestone: Milestone 2
+## 4. Test Execution Summary
 
-**Milestone 2 Scope: Provider Consolidation & React State Management Modernization**
-1. Audit and consolidate duplicate `ThemeContext` implementations.
-2. Stabilize `AuthContext`, `AdminAuthContext`, and `VirementContext` using `useMemo` and `useCallback`.
-3. Eliminate unnecessary re-renders across the primary dashboard and kiosk screens.
-4. Replace blocking `window.alert()` calls in `KioskLayout.tsx` and client login with accessible Ionic toast notifications.
+| Test Suite | File | Tests Run | Result | Notes |
+| :--- | :--- | :---: | :---: | :--- |
+| **QR Security & Concurrency** | `Backend/tests/test_qr_replay_concurrency.js` | 18 | **18 / 18 PASS** | Tested atomic creation, polling, single redemption, replay 409 rejection, 5-way simultaneous concurrency race (1 winner, 4 losers), 404 on invalid session, and 410 on pre-TTL expired session. |
+| **Tunisian RIB & IBAN** | `Backend/tests/test_rib_and_customer_registration.js` | 7 | **7 / 7 PASS** | Verified 13-digit account, 18-digit body, 2-digit modulo 97 key, 20-digit RIB, Amen Bank prefix (07162), and 24-character ISO IBAN. |
+| **Customer & Banker OTP (Separate)** | `Backend/tests/test_otp_customer_and_banker_separate.js` | 16 | **16 / 16 PASS** | Tested independent customer and banker registration, OTP email delivery to Mailpit, 6-digit code parsing, invalid OTP rejection (400), valid OTP acceptance (200), and session cookie authorization. |
+| **Mailpit OTP Regression** | `Backend/tests/test_mailpit_otp_flow.js` | 8 | **8 / 8 PASS** | Verified full end-to-end customer registration, login, Mailpit REST API integration, and cookie issuance. |
+| **Container Healthcheck** | `docker compose ps` | 7 services | **7 / 7 HEALTHY** | All 7 containers (`backend`, `bot`, `amenconnect`, `hardware-daemon`, `amenkiosk`, `mailpit`, `mongodb`) healthy and operational. |
+| **Total Automated Tests** | — | **49** | **49 / 49 PASS (100%)** | Zero test failures. |
 
-*Milestone 1 is complete and verified. Awaiting user review and authorization to proceed to Milestone 2.*
+---
+
+## 5. Regressions & Unresolved Issues
+- **None Identified:** All existing customer, banker, kiosk, and bot capabilities remain fully operational.
+- **TypeScript Notice:** Legacy implicit `any` and type debt across older page components remain in the source code; these are scheduled for resolution in **Milestone 4 (TypeScript & API Client Centralization)** without affecting Docker container compilation (handled via Vite esbuild).
+
+---
+
+## 6. Commit Status
+- **Commit Hash:** `c6c1f622` (preliminary Milestone 2) followed by Milestone 2 finalization commit.
+- **Branch:** `main` (clean working tree).

@@ -1,7 +1,7 @@
 // hooks/use-transfers-state.tsx
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "./../AuthContext";
 import { mapCompteToAccount } from "./../components/virements/utils/account-mapper";
 import type { Transfer, ScheduledTransfer } from "./../components/virements/types/transfer";
@@ -12,15 +12,19 @@ import axios from "axios";
 export const useTransfersState = () => {
   const { profile } = useAuth();
 
-  // Map Compte to Account
-  const accounts: Account[] = profile?.comptes.map(mapCompteToAccount) || [];
+  // Map Compte to Account with memoization
+  const accounts: Account[] = useMemo(() => {
+    return profile?.comptes?.map(mapCompteToAccount) || [];
+  }, [profile?.comptes]);
 
-  // Get the main account (using 'iban' because the Account type doesn't have 'RIB')
-  const mainAccount = accounts.find(
-    (account) =>
-      account.label.toLowerCase().includes("courant") ||
-      account.label.toLowerCase().includes("current")
-  );
+  // Get the main account with memoization
+  const mainAccount = useMemo(() => {
+    return accounts.find(
+      (account) =>
+        account.label.toLowerCase().includes("courant") ||
+        account.label.toLowerCase().includes("current")
+    );
+  }, [accounts]);
 
   // State for transfers
   const [transferHistory, setTransferHistory] = useState<Transfer[]>([]);
@@ -36,7 +40,9 @@ export const useTransfersState = () => {
         });
         setBeneficiaries(response.data);
       } catch (error: any) {
-        console.error("Error fetching beneficiaries:", error);
+        if (error?.response?.status !== 401) {
+          console.error("Error fetching beneficiaries:", error);
+        }
       }
     }
 
@@ -52,7 +58,7 @@ export const useTransfersState = () => {
   // Form state for new transfer
   const [newTransfer, setNewTransfer] = useState({
     beneficiaryId: "",
-    accountFrom: mainAccount?.iban || "", // Use 'iban' instead of 'RIB'
+    accountFrom: mainAccount?.iban || "",
     amount: "",
     reason: "",
     date: new Date().toISOString(),
@@ -60,16 +66,23 @@ export const useTransfersState = () => {
     endDate: "",
   });
 
+  // Keep accountFrom in sync when mainAccount resolves
+  useEffect(() => {
+    if (mainAccount?.iban && !newTransfer.accountFrom) {
+      setNewTransfer((prev) => ({ ...prev, accountFrom: mainAccount.iban }));
+    }
+  }, [mainAccount?.iban, newTransfer.accountFrom]);
+
   // Form state for batch transfers
   const [batchTransfers, setBatchTransfers] = useState<any[]>([
     { beneficiaryId: "", amount: "", reason: "" },
   ]);
 
-  const handleTransferChange = (field: string, value: any) => {
+  const handleTransferChange = useCallback((field: string, value: any) => {
     setNewTransfer((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const submitTransfer = async (isRecurring: boolean) => {
+  const submitTransfer = useCallback(async (isRecurring: boolean) => {
     const selectedAccount = accounts.find((acc) => acc.value === newTransfer.accountFrom);
     if (!selectedAccount) {
       throw new Error("Account not found");
@@ -122,9 +135,9 @@ export const useTransfersState = () => {
     });
 
     return true;
-  };
+  }, [accounts, newTransfer, beneficiaries, mainAccount?.iban]);
 
-  const limits = {
+  const limits = useMemo(() => ({
     daily: {
       limit: dailyLimit,
       used: currentDayUsage,
@@ -133,18 +146,18 @@ export const useTransfersState = () => {
       limit: monthlyLimit,
       used: currentMonthUsage,
     },
-  };
+  }), [dailyLimit, currentDayUsage, monthlyLimit, currentMonthUsage]);
 
-  const actions = {
+  const actions = useMemo(() => ({
     handleTransferChange,
     submitTransfer,
     setBatchTransfers,
     setTransferHistory,
     setScheduledTransfers,
     setBeneficiaries,
-  };
+  }), [handleTransferChange, submitTransfer]);
 
-  return {
+  return useMemo(() => ({
     accounts,
     mainAccount,
     transferHistory,
@@ -154,5 +167,15 @@ export const useTransfersState = () => {
     batchTransfers,
     limits,
     actions,
-  };
+  }), [
+    accounts,
+    mainAccount,
+    transferHistory,
+    scheduledTransfers,
+    beneficiaries,
+    newTransfer,
+    batchTransfers,
+    limits,
+    actions,
+  ]);
 };
