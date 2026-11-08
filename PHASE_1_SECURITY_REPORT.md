@@ -87,7 +87,7 @@ Before modifying any source code, each reported vulnerability was independently 
    - Implemented `verifyKioskAdmin` in [`Backend/controllers/kioskController.js`](file:///Users/mako/Desktop/amenconnect/amenconnect/Backend/controllers/kioskController.js) and registered `POST /api/kiosk/verify-admin` in `Backend/routes/kioskRoutes.js`.
    - Password verification algorithm:
      - First checks credentials against the MongoDB `Admin` collection using `bcrypt.compare`.
-     - Supports server-side fallback maintenance key configured in `.env` (`KIOSK_MAINTENANCE_PASSWORD=AmenKioskAdmin2026!`).
+     - Supports server-side fallback maintenance key configured in `.env` (`KIOSK_MAINTENANCE_PASSWORD=[REDACTED_COMPROMISED_SECRET]`).
      - Logs all successful and failed administrative access attempts with client IP and ISO timestamp to the security audit logger (`winston`).
      - Issues a secure, `HttpOnly`, `SameSite=Lax` session cookie (`adminToken`) valid for 2 hours.
 2. **Kiosk UI Hardening:**
@@ -186,7 +186,7 @@ All tests were executed against the live Docker container deployment on macOS.
   - Request: `curl -s -X POST http://localhost:3000/api/kiosk/verify-admin -H "Content-Type: application/json" -d '{"password":"admin123"}'`
   - Response: `{"success":false,"message":"Identifiants administrateur non valides."}` (HTTP 401).
 - **Case 2C (Authorized Server Maintenance Key):**
-  - Request: `curl -s -i -X POST http://localhost:3000/api/kiosk/verify-admin -H "Content-Type: application/json" -d '{"password":"AmenKioskAdmin2026!"}'`
+  - Request: `curl -s -i -X POST http://localhost:3000/api/kiosk/verify-admin -H "Content-Type: application/json" -d '{"password":"[REDACTED_COMPROMISED_SECRET]"}'`
   - Response: `{"success":true,"message":"Accès maintenance autorisé.","redirect":"/setup"}` (HTTP 200).
   - Cookie Set: `Set-Cookie: adminToken=...; Path=/; HttpOnly; SameSite=Lax; Max-Age=7200`.
 

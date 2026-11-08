@@ -3,6 +3,7 @@ const Kiosk = require("../models/Kiosk")
 const Admin = require("../models/Admin")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
+const crypto = require("crypto")
 const logger = require('../config/logger');
 const admin = require("../config/firebaseAdmin");
 const axios = require('axios');
@@ -321,12 +322,22 @@ exports.verifyKioskAdmin = async (req, res) => {
       }
     }
 
-    // 3. Check against server-side KIOSK_MAINTENANCE_PASSWORD (configured in server environment)
+    // 3. Check against server-side KIOSK_MAINTENANCE_PASSWORD using timing-safe comparison
     const maintenancePassword = process.env.KIOSK_MAINTENANCE_PASSWORD;
-    if (maintenancePassword && password === maintenancePassword) {
+    let isMaintenanceMatch = false;
+    if (maintenancePassword && typeof password === "string") {
+      const passBuf = Buffer.from(password, "utf8");
+      const maintBuf = Buffer.from(maintenancePassword, "utf8");
+      if (passBuf.length === maintBuf.length) {
+        isMaintenanceMatch = crypto.timingSafeEqual(passBuf, maintBuf);
+      }
+    }
+
+    if (isMaintenanceMatch) {
+      const keyFingerprint = crypto.createHash("sha256").update(maintenancePassword).digest("hex").slice(0, 16);
       logger.info("Kiosk admin verified via server maintenance key", { ip: clientIp });
       const token = jwt.sign(
-        { id: "kiosk-maintenance-admin", role: "kiosk-admin" },
+        { id: "kiosk-maintenance-admin", role: "kiosk-admin", keyFingerprint },
         process.env.JWT_SECRET || "fallback_secret",
         { expiresIn: "2h" }
       );
@@ -344,6 +355,39 @@ exports.verifyKioskAdmin = async (req, res) => {
   } catch (error) {
     logger.error("Error verifying kiosk admin", { error: error.message });
     return res.status(500).json({ success: false, message: "Erreur serveur lors de la vérification." });
+  }
+};
+
+/**
+ * Validate active kiosk administrator session and ensure token has not been invalidated by credential rotation.
+ */
+exports.checkKioskAdminSession = async (req, res) => {
+  try {
+    const adminToken = req.cookies?.adminToken;
+    if (!adminToken) {
+      return res.status(401).json({ authenticated: false, message: "No admin token provided." });
+    }
+
+    const decoded = jwt.verify(adminToken, process.env.JWT_SECRET || "fallback_secret");
+
+    // Invalidate if maintenance credential rotated
+    if (decoded.role === "kiosk-admin") {
+      const currentMaintenance = process.env.KIOSK_MAINTENANCE_PASSWORD;
+      if (!currentMaintenance) {
+        res.clearCookie("adminToken");
+        return res.status(401).json({ authenticated: false, message: "Maintenance authentication disabled." });
+      }
+      const currentFp = crypto.createHash("sha256").update(currentMaintenance).digest("hex").slice(0, 16);
+      if (!decoded.keyFingerprint || decoded.keyFingerprint !== currentFp) {
+        res.clearCookie("adminToken");
+        return res.status(401).json({ authenticated: false, message: "Credentials rotated. Session invalidated." });
+      }
+    }
+
+    return res.json({ authenticated: true, role: decoded.role, id: decoded.id });
+  } catch (err) {
+    res.clearCookie("adminToken");
+    return res.status(401).json({ authenticated: false, message: "Invalid or expired admin session." });
   }
 };
 

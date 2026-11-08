@@ -2,6 +2,7 @@
 const VideoConferenceRequest = require("../models/VideoConferenceRequest");
 const AdminNotification = require("../models/AdminNotification");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const logger = require("../config/logger");
 
 /**
@@ -11,7 +12,7 @@ const logger = require("../config/logger");
  */
 exports.generateConferenceToken = async (req, res) => {
   try {
-    const rawRoomId = req.query.roomId || req.body?.roomId || "amen-conference";
+    const rawRoomId = req.query.roomId || req.query.room || req.body?.roomId || req.body?.room || "amen-conference";
     // Sanitize room ID to avoid path traversal or injection
     const roomId = rawRoomId.replace(/[^a-zA-Z0-9_-]/g, "");
 
@@ -25,12 +26,20 @@ exports.generateConferenceToken = async (req, res) => {
       try {
         const decodedAdmin = jwt.verify(adminToken, process.env.JWT_SECRET || "fallback_secret");
         if (decodedAdmin) {
+          // If authenticated as maintenance admin, verify credential has not been rotated
+          if (decodedAdmin.role === "kiosk-admin") {
+            const currentMaintenance = process.env.KIOSK_MAINTENANCE_PASSWORD;
+            const currentFp = currentMaintenance ? crypto.createHash("sha256").update(currentMaintenance).digest("hex").slice(0, 16) : null;
+            if (!decodedAdmin.keyFingerprint || decodedAdmin.keyFingerprint !== currentFp) {
+              throw new Error("Rotated maintenance credential");
+            }
+          }
           isModerator = true;
           userName = decodedAdmin.name || "Conseiller Bancaire (Admin)";
           userEmail = decodedAdmin.email || "admin@amenbank.com.tn";
         }
       } catch (e) {
-        // Token invalid or expired
+        // Token invalid, expired, or rotated
       }
     }
 

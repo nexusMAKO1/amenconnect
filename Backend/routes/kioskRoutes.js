@@ -5,6 +5,7 @@ const kioskController = require("../controllers/kioskController")
 const adminpassport = require('../config/adminPassport');
 // Custom endpoints
 router.post("/verify-admin", kioskController.verifyKioskAdmin);
+router.get("/session", kioskController.checkKioskAdminSession);
 router.post("/shutdown", adminpassport.authenticate('admin-jwt', { session: false }), kioskController.shutdownTotem);
 router.get("/pending", kioskController.getPendingKiosks)
 router.post("/approve", kioskController.approveKiosk)
