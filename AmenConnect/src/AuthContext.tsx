@@ -1,5 +1,5 @@
 // AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import axios from "axios";
 
 
@@ -113,9 +113,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [pendingUser, setPendingUser] = useState<{ email: string } | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
 
-  const fetchProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     try {
-     
       const response = await axios.get("/api/auth/profile", { withCredentials: true });
       if (response.data && response.data.user) {
         setProfile(response.data);
@@ -124,50 +123,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setProfile(null);
         setIsAuthenticated(false);
       }
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      setProfile(null);
-      setIsAuthenticated(false);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  
-  const refreshProfile = async () => {
-    try {
-      const response = await axios.get("/api/auth/profile", { withCredentials: true });
-      if (response.data && response.data.user) {
-        setProfile(response.data);
-      } else {
-        setProfile(null);
+    } catch (error: any) {
+      if (error?.response?.status !== 401) {
+        console.error("Error refreshing profile:", error);
       }
-    } catch (error) {
-      console.error("Error refreshing profile:", error);
       setProfile(null);
       setIsAuthenticated(false);
     } finally {
       setAuthLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchProfile();
   }, []);
 
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
+
+  const contextValue = useMemo<AuthContextType>(
+    () => ({
+      isAuthenticated,
+      setIsAuthenticated,
+      profile,
+      setProfile,
+      pendingUser,
+      setPendingUser,
+      authLoading,
+      refreshProfile,
+    }),
+    [isAuthenticated, profile, pendingUser, authLoading, refreshProfile]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        setIsAuthenticated,
-        profile,
-        setProfile,
-        pendingUser,
-        setPendingUser,
-        authLoading,
-        refreshProfile,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

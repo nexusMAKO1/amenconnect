@@ -168,11 +168,13 @@ exports.verifyOTP = async (req, res) => {
     await admin.save();
 
     // Set the token as an HTTP-only cookie
+    const isSecure = (process.env.COOKIE_SECURE === "true") ||
+      Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
     res.cookie('adminToken', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       maxAge: 3600000,
-      sameSite: 'strict'
+      sameSite: 'lax'
     });
     logger.info('OTP verified successfully. Admin logged in', { adminId: admin._id });
     res.json({ message: "OTP verified successfully. Admin logged in." });
@@ -220,10 +222,12 @@ exports.resendOTP = async (req, res) => {
 // LOGOUT ENDPOINT (optional)
 exports.logout = async (req, res) => {
   try {
+    const isSecure = (process.env.COOKIE_SECURE === "true") ||
+      Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
     res.clearCookie('adminToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      secure: isSecure,
+      sameSite: 'lax'
     });
     logger.info('Admin logged out', { adminId: req.admin ? req.admin.id : undefined });
     res.json({ message: "Admin logged out successfully." });

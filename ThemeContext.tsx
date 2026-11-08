@@ -1,5 +1,5 @@
 // ThemeContext.tsx
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useMemo, ReactNode } from 'react';
 
 export interface Theme {
   kioskPrimary: string;
@@ -49,8 +49,9 @@ export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const contextValue = useMemo(() => ({ theme, setTheme }), [theme]);
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

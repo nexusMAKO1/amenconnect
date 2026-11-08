@@ -284,11 +284,13 @@ exports.verifyOTP = async (req, res) => {
     );
 
     // Set the token as an HTTP-only cookie
+    const isSecure = (process.env.COOKIE_SECURE === "true") ||
+      Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: "strict",
+      sameSite: "lax",
     });
 
     res.json({ message: "OTP verified successfully!" });
@@ -344,10 +346,12 @@ exports.logout = async (req, res) => {
     const deleteResult = await Session.deleteOne({ sessionId: decoded.sessionId });
     
     // Clear the token cookie from the client
+    const isSecure = (process.env.COOKIE_SECURE === "true") ||
+      Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
     res.clearCookie("token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: isSecure,
+      sameSite: "lax",
     });
     
     res.json({ message: "Logged out successfully." });

@@ -198,9 +198,9 @@ const fetchTotems = async () => {
       }, 100)
     }
 
-    // Cleanup function
+    // Cleanup function on tab change or unmount
     return () => {
-      if (mapRef.current && activeTab !== "monitoring") {
+      if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
         markersLayerRef.current = null

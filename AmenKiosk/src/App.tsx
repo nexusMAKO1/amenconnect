@@ -110,17 +110,6 @@ import { AuthProvider } from "./context/AuthContext"
 import { CarteProvider } from "./context/CarteContext"
 import Virement from "./pages/virement/virement"
 
-const PrivatePages: React.FC = () => (
-  <AuthProvider>
-    <ThemeLoader/>
-    <PrivateRoute exact path="/accueil" component={Accueil} />
-    <PrivateRoute exact path="/compte" component={Compte} />
-    <PrivateRoute exact path="/carte" component={Carte} />
-    <PrivateRoute exact path="/chatbot" component={ChatBotKiosk} />
-    <PrivateRoute exact path="/virement" component={Virement} />
-  </AuthProvider>
-);
-
 const App: React.FC = () => {
   // Remove any useAuth calls here since this part of the app is public.
   useEffect(() => {
@@ -142,49 +131,54 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
       <OrientationProvider>
-        {/* Wrap the entire routing tree with AuthProvider */}
+        {/* Single root AuthProvider for entire app */}
         <AuthProvider>
-        <CarteProvider>
-          <IonApp className="kiosk-app">
-            {/* Load theme variables from MongoDB */}
-            <ThemeLoader/>
-            <IonReactRouter>
-              <Suspense fallback={<LoadingFallback />}>
-                <IonRouterOutlet>
-                  {/* Public Routes */}
-                  <Route exact path="/home">
-                    <Home />
-                  </Route>
-                  <Route exact path="/modeinvite">
-                    <ModeInvite />
-                  </Route>
-                  <Route exact path="/login">
-                    <Login />
-                  </Route>
-                  <Route exact path="/account-creation">
-                    <AccountCreation onBack={() => window.history.back()} />
-                  </Route>
-                  <Route exact path="/otp">
-                    <Otp />
-                  </Route>
-                  <Route exact path="/forgot-password">
-                    <ForgotPassword onBack={() => window.history.back()} />
-                  </Route>
-                  <Route exact path="/">
-                    <Redirect to="/home" />
-                  </Route>
-                  <Route exact path="/theme">
-                    <ThemeCustomizerPage />
-                  </Route>
-                  <Route exact path="/setup">
-                    <KioskSetup />
-                  </Route>
-                  {/* Private Routes are still nested within the AuthProvider */}
-                  <PrivatePages />
-                </IonRouterOutlet>
-              </Suspense>
-            </IonReactRouter>
-          </IonApp>
+          <CarteProvider>
+            <IonApp className="kiosk-app">
+              {/* Load theme variables from MongoDB */}
+              <ThemeLoader />
+              <IonReactRouter>
+                <Suspense fallback={<LoadingFallback />}>
+                  <IonRouterOutlet>
+                    {/* Public Routes */}
+                    <Route exact path="/home">
+                      <Home />
+                    </Route>
+                    <Route exact path="/modeinvite">
+                      <ModeInvite />
+                    </Route>
+                    <Route exact path="/login">
+                      <Login />
+                    </Route>
+                    <Route exact path="/account-creation">
+                      <AccountCreation onBack={() => window.history.back()} />
+                    </Route>
+                    <Route exact path="/otp">
+                      <Otp />
+                    </Route>
+                    <Route exact path="/forgot-password">
+                      <ForgotPassword onBack={() => window.history.back()} />
+                    </Route>
+                    <Route exact path="/">
+                      <Redirect to="/home" />
+                    </Route>
+                    <Route exact path="/theme">
+                      <ThemeCustomizerPage />
+                    </Route>
+                    <Route exact path="/setup">
+                      <KioskSetup />
+                    </Route>
+
+                    {/* Protected Private Routes */}
+                    <PrivateRoute exact path="/accueil" component={Accueil} />
+                    <PrivateRoute exact path="/compte" component={Compte} />
+                    <PrivateRoute exact path="/carte" component={Carte} />
+                    <PrivateRoute exact path="/chatbot" component={ChatBotKiosk} />
+                    <PrivateRoute exact path="/virement" component={Virement} />
+                  </IonRouterOutlet>
+                </Suspense>
+              </IonReactRouter>
+            </IonApp>
           </CarteProvider>
         </AuthProvider>
       </OrientationProvider>

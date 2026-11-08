@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -7,9 +8,11 @@ const Main: React.FC = () => {
   useEffect(() => {
     const setTransparentStatusBar = async () => {
       try {
-        await StatusBar.setOverlaysWebView({ overlay: true });
-        await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: 'transparent' });
+        if (Capacitor.isNativePlatform()) {
+          await StatusBar.setOverlaysWebView({ overlay: true });
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: 'transparent' });
+        }
       } catch (error) {
         console.error('Error setting status bar:', error);
       }

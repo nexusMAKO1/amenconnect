@@ -42,6 +42,7 @@ async function run() {
   }
 
   const testEmail = `test.otp.${Date.now()}@amenbank.com.tn`;
+  const testCin = String(Math.floor(10000000 + Math.random() * 90000000));
 
   // 1. Register a test user
   const regRes = await request({
@@ -51,7 +52,7 @@ async function run() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
   }, {
-    cin: "08887766",
+    cin: testCin,
     nom: "Test",
     prenom: "Mailpit",
     email: testEmail,
@@ -139,3 +140,4 @@ run().catch((err) => {
   console.error("Test runner encountered error:", err);
   process.exit(1);
 });
+

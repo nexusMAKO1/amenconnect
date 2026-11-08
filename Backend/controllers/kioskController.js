@@ -278,6 +278,9 @@ exports.verifyKioskAdmin = async (req, res) => {
 
     const clientIp = req.ip || req.connection.remoteAddress;
 
+    const isSecure = (process.env.COOKIE_SECURE === "true") ||
+      Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
+
     // 1. Check against active MongoDB Admin accounts
     if (email) {
       const adminUser = await Admin.findOne({ email });
@@ -292,7 +295,7 @@ exports.verifyKioskAdmin = async (req, res) => {
           );
           res.cookie("adminToken", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: isSecure,
             sameSite: "lax",
             maxAge: 7200000,
           });
@@ -314,7 +317,7 @@ exports.verifyKioskAdmin = async (req, res) => {
         );
         res.cookie("adminToken", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: isSecure,
           sameSite: "lax",
           maxAge: 7200000,
         });
@@ -343,7 +346,7 @@ exports.verifyKioskAdmin = async (req, res) => {
       );
       res.cookie("adminToken", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecure,
         sameSite: "lax",
         maxAge: 7200000,
       });

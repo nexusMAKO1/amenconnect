@@ -1,5 +1,5 @@
 // AdminAuthContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import axios from "axios";
 
 export interface AdminProfile {
@@ -33,7 +33,7 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [pendingAdmin, setPendingAdmin] = useState<{ email: string } | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
 
-  const fetchAdminProfile = async () => {
+  const refreshAdminProfile = useCallback(async () => {
     try {
       const response = await axios.get("/api/admin/profile", { withCredentials: true });
       if (response.data && response.data.admin) {
@@ -43,52 +43,37 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         setAdminProfile(null);
         setIsAuthenticated(false);
       }
-    } catch (error) {
-      console.error("Admin auth check failed:", error);
-      setAdminProfile(null);
-      setIsAuthenticated(false);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-  
-
-  const refreshAdminProfile = async () => {
-    try {
-      const response = await axios.get("/api/admin/profile", { withCredentials: true });
-      if (response.data && response.data.admin) {
-        setAdminProfile(response.data.admin);
-        setIsAuthenticated(true); // Ensure the user is marked as authenticated
-      } else {
-        setAdminProfile(null);
-        setIsAuthenticated(false);
+    } catch (error: any) {
+      if (error?.response?.status !== 401) {
+        console.error("Error refreshing admin profile:", error);
       }
-    } catch (error) {
-      console.error("Error refreshing admin profile:", error);
       setAdminProfile(null);
       setIsAuthenticated(false);
     } finally {
       setAuthLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchAdminProfile();
   }, []);
 
+  useEffect(() => {
+    refreshAdminProfile();
+  }, [refreshAdminProfile]);
+
+  const contextValue = useMemo<AdminAuthContextType>(
+    () => ({
+      isAuthenticated,
+      setIsAuthenticated,
+      adminProfile,
+      setAdminProfile,
+      pendingAdmin,
+      setPendingAdmin,
+      authLoading,
+      refreshAdminProfile,
+    }),
+    [isAuthenticated, adminProfile, pendingAdmin, authLoading, refreshAdminProfile]
+  );
+
   return (
-    <AdminAuthContext.Provider
-      value={{
-        isAuthenticated,
-        setIsAuthenticated,
-        adminProfile,
-        setAdminProfile,
-        pendingAdmin,
-        setPendingAdmin,
-        authLoading,
-        refreshAdminProfile,
-      }}
-    >
+    <AdminAuthContext.Provider value={contextValue}>
       {children}
     </AdminAuthContext.Provider>
   );

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useMemo } from "react"
 
 type Orientation = "portrait" | "landscape"
 
@@ -44,11 +44,14 @@ export const OrientationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [])
 
-  const value = {
-    orientation,
-    isPortrait: orientation === "portrait",
-    isLandscape: orientation === "landscape",
-  }
+  const value = useMemo<OrientationContextType>(
+    () => ({
+      orientation,
+      isPortrait: orientation === "portrait",
+      isLandscape: orientation === "landscape",
+    }),
+    [orientation]
+  )
 
   return <OrientationContext.Provider value={value}>{children}</OrientationContext.Provider>
 }
