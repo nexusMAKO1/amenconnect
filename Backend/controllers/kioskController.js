@@ -1,5 +1,8 @@
 //controllers/kioskController.js
 const Kiosk = require("../models/Kiosk")
+const Admin = require("../models/Admin")
+const bcrypt = require("bcryptjs")
+const jwt = require("jsonwebtoken")
 const logger = require('../config/logger');
 const admin = require("../config/firebaseAdmin");
 const axios = require('axios');
@@ -258,6 +261,89 @@ exports.runDiagnostic = async (req, res) => {
     res.json({ message: `Diagnostic command sent to Totem ${totemId}` });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * SEC-002: Server-side kiosk administrator verification.
+ * Verifies credentials against Admin accounts in MongoDB or server-side KIOSK_MAINTENANCE_PASSWORD.
+ */
+exports.verifyKioskAdmin = async (req, res) => {
+  try {
+    const { password, email } = req.body;
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({ success: false, message: "Mot de passe administrateur requis." });
+    }
+
+    const clientIp = req.ip || req.connection.remoteAddress;
+
+    // 1. Check against active MongoDB Admin accounts
+    if (email) {
+      const adminUser = await Admin.findOne({ email });
+      if (adminUser) {
+        const isMatch = await bcrypt.compare(password, adminUser.password);
+        if (isMatch) {
+          logger.info("Kiosk admin verified via Admin account", { email, role: adminUser.role, ip: clientIp });
+          const token = jwt.sign(
+            { id: adminUser._id, role: adminUser.role, email: adminUser.email },
+            process.env.JWT_SECRET || "fallback_secret",
+            { expiresIn: "2h" }
+          );
+          res.cookie("adminToken", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 7200000,
+          });
+          return res.json({ success: true, message: "Accès administrateur autorisé.", redirect: "/setup" });
+        }
+      }
+    }
+
+    // 2. Check all active Admin accounts if email was not supplied
+    const admins = await Admin.find({ role: { $in: ["admin", "superadmin"] } });
+    for (const adminUser of admins) {
+      const isMatch = await bcrypt.compare(password, adminUser.password);
+      if (isMatch) {
+        logger.info("Kiosk admin verified via Admin account password", { email: adminUser.email, ip: clientIp });
+        const token = jwt.sign(
+          { id: adminUser._id, role: adminUser.role, email: adminUser.email },
+          process.env.JWT_SECRET || "fallback_secret",
+          { expiresIn: "2h" }
+        );
+        res.cookie("adminToken", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 7200000,
+        });
+        return res.json({ success: true, message: "Accès administrateur autorisé.", redirect: "/setup" });
+      }
+    }
+
+    // 3. Check against server-side KIOSK_MAINTENANCE_PASSWORD (configured in server environment)
+    const maintenancePassword = process.env.KIOSK_MAINTENANCE_PASSWORD;
+    if (maintenancePassword && password === maintenancePassword) {
+      logger.info("Kiosk admin verified via server maintenance key", { ip: clientIp });
+      const token = jwt.sign(
+        { id: "kiosk-maintenance-admin", role: "kiosk-admin" },
+        process.env.JWT_SECRET || "fallback_secret",
+        { expiresIn: "2h" }
+      );
+      res.cookie("adminToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7200000,
+      });
+      return res.json({ success: true, message: "Accès maintenance autorisé.", redirect: "/setup" });
+    }
+
+    logger.warn("Failed kiosk admin access attempt", { ip: clientIp });
+    return res.status(401).json({ success: false, message: "Identifiants administrateur non valides." });
+  } catch (error) {
+    logger.error("Error verifying kiosk admin", { error: error.message });
+    return res.status(500).json({ success: false, message: "Erreur serveur lors de la vérification." });
   }
 };
 

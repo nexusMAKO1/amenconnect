@@ -50,8 +50,10 @@ const NotificationDesktop: React.FC = () => {
       return;
     }
     
-    socketRef.current = io("http://localhost:3000", {
-      transports: ["websocket"],
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "");
+    socketRef.current = io(socketUrl, {
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
     });
     
     // Emit a register event to join the room associated with the user's ID

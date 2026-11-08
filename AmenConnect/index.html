@@ -1,19 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="viewport-fit=cover, width=device-width, minimum-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    
 
     <title>AmenConnect</title>
-    <meta name="description" content="A fast, modern, and highly optimized Ionic PWA built with React." />
-    <meta name="keywords" content="Ionic, PWA, React, Progressive Web App, Mobile App" />
+    <meta name="description" content="AmenConnect - Banque Digitale Omnicanale & Libre-Service." />
+    <meta name="keywords" content="Ionic, PWA, React, Banque Digitale, Amen Bank" />
     <meta name="author" content="Amen Bank" />
 
     <!-- Open Graph (for social media sharing) -->
@@ -33,50 +29,35 @@
     <meta name="apple-mobile-web-app-title" content="Amen Connect" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- ✅ Apple Touch Icons (For Home Screen) -->
-  <!-- Apple Touch Icon (For Home Screen) -->
+    <!-- Apple Touch Icons & Startup Screens -->
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-startup-image" href="/icons/favicon-640x1136.png" media="(device-width: 320px) and (device-height: 568px)" />
+    <link rel="apple-touch-startup-image" href="/icons/favicon-750x1334.png" media="(device-width: 375px) and (device-height: 667px)" />
+    <link rel="apple-touch-startup-image" href="/icons/favicon-1125x2436.png" media="(device-width: 375px) and (device-height: 812px)" />
+    <link rel="apple-touch-startup-image" href="/icons/favicon-828x1792.png" media="(device-width: 414px) and (device-height: 896px)" />
 
-<link rel="apple-touch-icon" sizes="512x512" href="icons/apple-touch-icon.png" />
-
-<!-- Startup Screens (Fix paths to public/icons/) -->
-<link rel="apple-touch-startup-image" href="/icons/favicon-640x1136.png" media="(device-width: 320px) and (device-height: 568px)" />
-<link rel="apple-touch-startup-image" href="/icons/favicon-750x1334.png" media="(device-width: 375px) and (device-height: 667px)" />
-<link rel="apple-touch-startup-image" href="/icons/favicon-1125x2436.png" media="(device-width: 375px) and (device-height: 812px)" />
-<link rel="apple-touch-startup-image" href="/icons/favicon-828x1792.png" media="(device-width: 414px) and (device-height: 896px)" />
-
-
-    <!-- ✅ Favicon -->
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/icons/favicon.png" />
 
-    <!-- Preload Important Resources -->
-    <link rel="preload" as="script" href="/src/main.tsx" />
+    <!-- Preconnect Important CDN Resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
 
-    <!-- ✅ Security Headers -->
+    <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self'; 
-    connect-src 'self' https://picsum.photos/seed/0/40/40 http://localhost:3000 ws://localhost:3000 https://open.er-api.com http://127.0.0.1:3000 https://8x8.vc wss://s-usc1b-nss-2149.firebaseio.com https://s-usc1b-nss-2149.firebaseio.com;
-    script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://www.google.com https://www.gstatic.com https://8x8.vc https://kiosk-b8f76-default-rtdb.firebaseio.com https://s-usc1b-nss-2149.firebaseio.com;
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
-    font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
-    img-src 'self' data: https://yourwebsite.com https://picsum.photos https://*.tile.openstreetmap.org https://fastly.picsum.photos;
-    
-    frame-src 'self' https://8x8.vc https://meet.jit.si https://s-usc1b-nss-2149.firebaseio.com;
-  ">
-  
-  
-  
-  
-  
-  
-
+      default-src 'self';
+      connect-src 'self' ws: wss: http: https: https://open.er-api.com https://8x8.vc wss://*.firebaseio.com https://*.firebaseio.com;
+      script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://www.google.com https://www.gstatic.com https://8x8.vc https://*.firebaseio.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+      img-src 'self' data: blob: https://picsum.photos https://*.tile.openstreetmap.org https://fastly.picsum.photos;
+      frame-src 'self' https://8x8.vc https://meet.jit.si https://*.firebaseio.com;
+    ">
 
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
-    <!-- ✅ Lazy Load Non-Critical Scripts -->
-    <script type="module" defer src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </head>
   <body>
     <div id="root"></div>

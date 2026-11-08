@@ -1,6 +1,118 @@
 // controllers/videoConferenceController.js
 const VideoConferenceRequest = require("../models/VideoConferenceRequest");
 const AdminNotification = require("../models/AdminNotification");
+const jwt = require("jsonwebtoken");
+const logger = require("../config/logger");
+
+/**
+ * SEC-003: Generate dynamic, scoped conference token.
+ * Validates session cookies, grants moderator privileges ONLY to authenticated admins,
+ * and signs short-lived (15 min) room-scoped tokens server-side.
+ */
+exports.generateConferenceToken = async (req, res) => {
+  try {
+    const rawRoomId = req.query.roomId || req.body?.roomId || "amen-conference";
+    // Sanitize room ID to avoid path traversal or injection
+    const roomId = rawRoomId.replace(/[^a-zA-Z0-9_-]/g, "");
+
+    let isModerator = false;
+    let userName = "Participant";
+    let userEmail = "guest@amenbank.com.tn";
+
+    // 1. Verify if user is an authenticated Admin
+    const adminToken = req.cookies?.adminToken;
+    if (adminToken) {
+      try {
+        const decodedAdmin = jwt.verify(adminToken, process.env.JWT_SECRET || "fallback_secret");
+        if (decodedAdmin) {
+          isModerator = true;
+          userName = decodedAdmin.name || "Conseiller Bancaire (Admin)";
+          userEmail = decodedAdmin.email || "admin@amenbank.com.tn";
+        }
+      } catch (e) {
+        // Token invalid or expired
+      }
+    }
+
+    // 2. If not admin, check client user token
+    if (!isModerator && req.cookies?.token) {
+      try {
+        const decodedUser = jwt.verify(req.cookies.token, process.env.JWT_SECRET || "fallback_secret");
+        if (decodedUser) {
+          userName = decodedUser.nom ? `${decodedUser.prenom} ${decodedUser.nom}` : "Client Amen Bank";
+          userEmail = decodedUser.email || "client@amenbank.com.tn";
+        }
+      } catch (e) {
+        // Token invalid or expired
+      }
+    }
+
+    // 3. If JaaS credentials are provided in server environment, sign short-lived RS256 token
+    const jaasAppId = process.env.JAAS_APP_ID;
+    const jaasKeyId = process.env.JAAS_KEY_ID;
+    const jaasPrivateKey = process.env.JAAS_PRIVATE_KEY;
+
+    if (jaasAppId && jaasPrivateKey) {
+      try {
+        const token = jwt.sign(
+          {
+            aud: "jitsi",
+            iss: "chat",
+            sub: jaasAppId,
+            room: roomId,
+            context: {
+              features: {
+                livestreaming: isModerator,
+                recording: isModerator,
+                transcription: isModerator,
+                "outbound-call": false,
+              },
+              user: {
+                moderator: isModerator,
+                name: userName,
+                email: userEmail,
+              },
+            },
+          },
+          jaasPrivateKey,
+          {
+            algorithm: "RS256",
+            header: jaasKeyId ? { kid: jaasKeyId } : undefined,
+            expiresIn: "15m",
+          }
+        );
+
+        return res.json({
+          provider: "jaas",
+          domain: "8x8.vc",
+          tenant: jaasAppId,
+          roomId,
+          token,
+          displayName: userName,
+          email: userEmail,
+          isModerator,
+        });
+      } catch (signErr) {
+        logger.error("Error signing JaaS JWT", { error: signErr.message });
+      }
+    }
+
+    // 4. Default / Fallback: standard Jitsi configuration without hardcoded secret
+    return res.json({
+      provider: "jitsi",
+      domain: process.env.JITSI_DOMAIN || "meet.jit.si",
+      tenant: null,
+      roomId,
+      token: null,
+      displayName: userName,
+      email: userEmail,
+      isModerator,
+    });
+  } catch (error) {
+    logger.error("Error generating conference token", { error: error.message });
+    return res.status(500).json({ message: "Erreur lors de la configuration de la conférence" });
+  }
+};
 
 /**
  * Update the status of a video conference (only 'active' or 'completed').

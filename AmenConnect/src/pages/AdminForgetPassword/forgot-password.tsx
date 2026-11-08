@@ -38,7 +38,7 @@ const ForgotPassword: React.FC = () => {
       setIsLoading(true)
       setError("")
 
-      const response = await fetch("http://localhost:3000/api/admin/forget", {
+      const response = await fetch("/api/admin/forget", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

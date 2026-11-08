@@ -138,8 +138,13 @@ const LoginKiosk: React.FC = () => {
     }
   }
 
-  // Embed the session ID in the QR code URL for the mobile app to scan
-  const qrCodeData = `http://localhost:8100/auth?session=${sessionId.current}`
+  // Embed the session ID in the QR code URL for the mobile app or camera to scan
+  // Dynamically points to the client portal on port 8100 using current hostname or VITE_CLIENT_PORTAL_URL
+  const defaultPortalOrigin = typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:8100`
+    : "http://localhost:8100"
+  const clientPortalUrl = (import.meta.env.VITE_CLIENT_PORTAL_URL as string) || defaultPortalOrigin
+  const qrCodeData = `${clientPortalUrl}/qr-scanner?session=${sessionId.current}`
 
   // Polling: periodically check if the mobile app has authenticated the session.
   // Run polling only when the QR code is being shown (i.e. when both showForgotPassword and showLoginForm are false)

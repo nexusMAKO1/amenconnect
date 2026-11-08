@@ -27,42 +27,59 @@ const JitsiMeetComponent: React.FC<JitsiMeetComponentProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [jitsiUrl, setJitsiUrl] = useState<string>("")
 
   // Generate a secure room name if not provided
-  const secureRoomName = roomName || `secure-${Math.random().toString(36).substring(2, 15)}`
+  const secureRoomName = (roomName || `secure-${Math.random().toString(36).substring(2, 15)}`).replace(/[^a-zA-Z0-9_-]/g, "")
 
-  // ==============================
-  // JWT Token & Tenant Configuration
-  // ==============================
-  // IMPORTANT:
-  // - Replace these values with the credentials you obtain from your JaaS provider.
-  // - Ensure the tenant (API key) matches the "sub" field of your JWT token.
-  const tenant = "vpaas-magic-cookie-3aaa5c6dc3d342e0b40703fe93348e6a" // Your JaaS tenant name (API key)
-  const token = "eyJraWQiOiJ2cGFhcy1tYWdpYy1jb29raWUtM2FhYTVjNmRjM2QzNDJlMGI0MDcwM2ZlOTMzNDhlNmEvZjk1MTY3LVNBTVBMRV9BUFAiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJqaXRzaSIsImlzcyI6ImNoYXQiLCJpYXQiOjE3NTAxNjY5MzMsImV4cCI6MTc1MDE3NDEzMywibmJmIjoxNzUwMTY2OTI4LCJzdWIiOiJ2cGFhcy1tYWdpYy1jb29raWUtM2FhYTVjNmRjM2QzNDJlMGI0MDcwM2ZlOTMzNDhlNmEiLCJjb250ZXh0Ijp7ImZlYXR1cmVzIjp7ImxpdmVzdHJlYW1pbmciOnRydWUsIm91dGJvdW5kLWNhbGwiOnRydWUsInNpcC1vdXRib3VuZC1jYWxsIjpmYWxzZSwidHJhbnNjcmlwdGlvbiI6dHJ1ZSwicmVjb3JkaW5nIjp0cnVlLCJmbGlwIjpmYWxzZX0sInVzZXIiOnsiaGlkZGVuLWZyb20tcmVjb3JkZXIiOmZhbHNlLCJtb2RlcmF0b3IiOnRydWUsIm5hbWUiOiJraGVtaXJpb3Vzc2FtYTAwIiwiaWQiOiJnb29nbGUtb2F1dGgyfDExNjQ1NTI1NzgzNTE1NTgwMzUwMyIsImF2YXRhciI6IiIsImVtYWlsIjoia2hlbWlyaW91c3NhbWEwMEBnbWFpbC5jb20ifX0sInJvb20iOiIqIn0.Bkve-6pnUVBkWtp_htCX31wyZ_tHfJD7f8iz6GHKW-pV4KEb2zAInHuL_adKIVnT_HBlZw5PjcEIfou5iZiA1P6iotyswLr4FL9HD-9YDL-4parJdp34g6au578znFAB8TH-nXD69s5RDwSQ15WSxUnioenVIYal4MFfu84UqdkBmAhnGHio0FvhER9x4gJU6avHJVfRL6wMHrGHLh77qFQMwUONnTV5Y1UtkmDHogzsK6gQJkNKnqsabGX4bcd5zIwCC61ocvhw5joyXFyfb5CGOqZSUWMPEB3f3aOTg5Gdq7k_CA900SsO8OEuotX0a080vsZbVgIBmyUAldYIlw";
+  useEffect(() => {
+    let isMounted = true
+    async function loadConferenceConfig() {
+      try {
+        setIsLoading(true)
+        const response = await fetch(`/api/video-requests/token?roomId=${encodeURIComponent(secureRoomName)}`, {
+          credentials: "include",
+        })
+        if (!response.ok) throw new Error("Échec de récupération de la session de visioconférence")
+        const config = await response.json()
 
-  // ==============================
-  // Construct the URL for your JaaS meeting
-  // ==============================
-  // Note: The base URL for JaaS is different from the default meet.jit.si.
-  const baseUrl = `https://8x8.vc/${tenant}/${secureRoomName}`
+        const baseUrl = config.tenant
+          ? `https://${config.domain}/${config.tenant}/${config.roomId}`
+          : `https://${config.domain}/${config.roomId}`
 
-  // Configure meeting options via hash parameters
-  const hashParams = `#config.prejoinPageEnabled=false` +
-    `&config.startWithAudioMuted=false` +
-    `&config.startWithVideoMuted=false` +
-    `&config.subject=${encodeURIComponent(subject)}` +
-    `&userInfo.displayName=${encodeURIComponent(displayName)}` +
-    `&userInfo.email=${encodeURIComponent(email)}` +
-    `&interfaceConfig.TOOLBAR_BUTTONS=["microphone","camera","closedcaptions","desktop","fullscreen","fodeviceselection","hangup","profile","chat","recording","livestreaming","etherpad","sharedvideo","settings","raisehand","videoquality","filmstrip","feedback","stats","shortcuts","tileview","videobackgroundblur","download","help","mute-everyone","security"]` +
-    `&interfaceConfig.SETTINGS_SECTIONS=["devices","language","moderator","profile","calendar"]` +
-    `&interfaceConfig.SHOW_JITSI_WATERMARK=false` +
-    `&interfaceConfig.SHOW_WATERMARK_FOR_GUESTS=false` +
-    `&interfaceConfig.SHOW_BRAND_WATERMARK=false` +
-    `&interfaceConfig.GENERATE_ROOMNAMES_ON_WELCOME_PAGE=false` +
-    `&interfaceConfig.DISPLAY_WELCOME_PAGE_CONTENT=false`
+        const hashParams =
+          `#config.prejoinPageEnabled=false` +
+          `&config.startWithAudioMuted=false` +
+          `&config.startWithVideoMuted=false` +
+          `&config.subject=${encodeURIComponent(subject)}` +
+          `&userInfo.displayName=${encodeURIComponent(displayName || config.displayName)}` +
+          `&userInfo.email=${encodeURIComponent(email || config.email)}` +
+          `&interfaceConfig.TOOLBAR_BUTTONS=["microphone","camera","closedcaptions","desktop","fullscreen","fodeviceselection","hangup","profile","chat","recording","settings","raisehand","tileview","mute-everyone","security"]` +
+          `&interfaceConfig.SETTINGS_SECTIONS=["devices","language","moderator","profile"]` +
+          `&interfaceConfig.SHOW_JITSI_WATERMARK=false` +
+          `&interfaceConfig.SHOW_WATERMARK_FOR_GUESTS=false` +
+          `&interfaceConfig.SHOW_BRAND_WATERMARK=false`
 
-  // Append the JWT token as a query parameter
-  const jitsiUrl = `${baseUrl}?jwt=${token}${hashParams}`
+        const fullUrl = config.token ? `${baseUrl}?jwt=${config.token}${hashParams}` : `${baseUrl}${hashParams}`
+
+        if (isMounted) {
+          setJitsiUrl(fullUrl)
+          setError(null)
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || "Erreur lors du chargement de la visioconférence")
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadConferenceConfig()
+
+    return () => {
+      isMounted = false
+    }
+  }, [secureRoomName, displayName, email, subject])
 
   useEffect(() => {
     // Handle iframe load events

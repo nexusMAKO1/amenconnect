@@ -5,8 +5,8 @@ import legacy from '@vitejs/plugin-legacy'
 import fs from 'fs';
 import path from 'path';
 
-const keyPath = path.resolve(__dirname, 'public', 'server.key');
-const certPath = path.resolve(__dirname, 'public', 'server.crt');
+const keyPath = process.env.SSL_KEY_PATH || path.resolve(__dirname, '..', '.certs', 'server.key');
+const certPath = process.env.SSL_CERT_PATH || path.resolve(__dirname, '..', '.certs', 'server.crt');
 const httpsConfig = (fs.existsSync(keyPath) && fs.existsSync(certPath)) ? {
   key: fs.readFileSync(keyPath),
   cert: fs.readFileSync(certPath)

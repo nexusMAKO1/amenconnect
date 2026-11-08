@@ -60,7 +60,7 @@ const fetchRoleDistribution = async () => {
 // Function to fetch system stats from your API endpoint
 const fetchSystemStats = async () => {
   try {
-    const response = await fetch("http://localhost:3000/api/system-stats");
+    const response = await fetch("/api/system-stats");
     if (!response.ok) {
       throw new Error("Failed to fetch system stats");
     }

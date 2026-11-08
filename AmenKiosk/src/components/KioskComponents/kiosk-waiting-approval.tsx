@@ -17,8 +17,9 @@ const KioskWaitingApproval: React.FC<KioskWaitingApprovalProps> = ({ serialNumbe
   const [elapsedTime, setElapsedTime] = useState<number>(0)
 
   useEffect(() => {
-    // Explicitly connect to the Socket.IO server running on port 3000
-    const socket = io("http://localhost:3000") 
+    // Connect to Socket.IO via configured URL or relative origin (works with reverse proxy and Docker)
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "");
+    const socket = io(socketUrl, { path: "/socket.io" }); 
 
     // Log connection info
     socket.on("connect", () => {

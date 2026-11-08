@@ -18,6 +18,15 @@ const QRScanner: React.FC = () => {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
 
   useEffect(() => {
+    // If opened directly from an external mobile camera with ?session=... in URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionParam = searchParams.get("session");
+    if (sessionParam) {
+      handleScan(window.location.href);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!scanning) return
 
     const timer = setTimeout(() => {

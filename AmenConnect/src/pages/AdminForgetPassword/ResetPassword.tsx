@@ -52,7 +52,7 @@ const ResetPassword: React.FC = () => {
     setIsLoading(true)
 
     try {
-      const response = await fetch("http://localhost:3000/api/admin/reset", {
+      const response = await fetch("/api/admin/reset", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

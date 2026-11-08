@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const videoConferenceController = require("../controllers/videoConferenceController");
 
+// Token generation for secure dynamic conferences
+router.get("/token", videoConferenceController.generateConferenceToken);
+
 // Route pour créer une nouvelle demande de vidéoconférence
 router.post("/", videoConferenceController.createVideoConferenceRequest);
 

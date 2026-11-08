@@ -100,6 +100,7 @@ const AppContent: React.FC = () => {
             <Route exact path="/ResetPassword" component={ResetPassword} />
             <Route exact path="/ModeInvite" component={ModeInvite} />
             <Route exact path="/qr-scanner" component={QRScanner} />
+            <Route exact path="/auth" render={({ location }) => <Redirect to={{ pathname: "/qr-scanner", search: location.search }} />} />
             <Route exact path="/accountcreation" component={AccountCreationForm} />
             <Route exact path="/admin/Themes" component={theme} />
             <Route path="/video/:roomId" component={JitsiMeetComponent} />

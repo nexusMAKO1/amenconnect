@@ -36,6 +36,7 @@ const Accueil = lazy(() => import("./pages/accueil/AccueilKiosk"))
 const Compte = lazy(() => import("./pages/Compte/CompteKiosk"))
 const Carte = lazy(() => import("./pages/Carte/CarteKiosk"))
 const ThemeCustomizerPage = lazy(() => import("./theme-customizer-page"))
+const KioskSetup = lazy(() => import("./components/KioskComponents/kiosk-setup"))
 const Home = lazy(() =>
   import("./pages/Home").catch((err) => {
     console.error("Failed to load Home component:", err)
@@ -174,6 +175,9 @@ const App: React.FC = () => {
                   </Route>
                   <Route exact path="/theme">
                     <ThemeCustomizerPage />
+                  </Route>
+                  <Route exact path="/setup">
+                    <KioskSetup />
                   </Route>
                   {/* Private Routes are still nested within the AuthProvider */}
                   <PrivatePages />

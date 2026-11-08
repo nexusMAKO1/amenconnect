@@ -24,6 +24,8 @@ const KioskLayout: React.FC<KioskLayoutProps> = ({ children, pageTitle, showLogo
   const [adminClickTimer, setAdminClickTimer] = useState<NodeJS.Timeout | null>(null)
   const [showAdminPrompt, setShowAdminPrompt] = useState(false)
   const [adminPassword, setAdminPassword] = useState("")
+  const [adminError, setAdminError] = useState("")
+  const [isVerifyingAdmin, setIsVerifyingAdmin] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -78,14 +80,33 @@ const KioskLayout: React.FC<KioskLayoutProps> = ({ children, pageTitle, showLogo
     }
   }
 
-  const handleAdminAccess = () => {
-    // Simple password check - in a real app, use proper authentication
-    if (adminPassword === "admin123") {
-      setShowAdminPrompt(false)
-      setAdminPassword("")
-      history.push("/admin")
-    } else {
-      alert("Mot de passe incorrect")
+  const handleAdminAccess = async () => {
+    if (!adminPassword.trim()) {
+      setAdminError("Veuillez saisir le mot de passe administrateur")
+      return
+    }
+    setIsVerifyingAdmin(true)
+    setAdminError("")
+    try {
+      const response = await fetch("/api/kiosk/verify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: adminPassword }),
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        setShowAdminPrompt(false)
+        setAdminPassword("")
+        setAdminError("")
+        history.push(data.redirect || "/setup")
+      } else {
+        setAdminError(data.message || "Mot de passe administrateur incorrect")
+      }
+    } catch (err) {
+      setAdminError("Erreur de connexion au serveur d'authentification")
+    } finally {
+      setIsVerifyingAdmin(false)
     }
   }
 
@@ -157,21 +178,39 @@ const KioskLayout: React.FC<KioskLayoutProps> = ({ children, pageTitle, showLogo
             <input
               type="password"
               value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
+              onChange={(e) => {
+                setAdminPassword(e.target.value)
+                if (adminError) setAdminError("")
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdminAccess()
+              }}
               placeholder="Mot de passe"
+              disabled={isVerifyingAdmin}
             />
+            {adminError && (
+              <div style={{ color: "#ff4961", fontSize: "0.875rem", marginTop: "0.5rem" }}>
+                {adminError}
+              </div>
+            )}
             <div className="kiosk-admin-prompt-actions">
               <button
                 className="kiosk-admin-prompt-cancel"
                 onClick={() => {
                   setShowAdminPrompt(false)
                   setAdminPassword("")
+                  setAdminError("")
                 }}
+                disabled={isVerifyingAdmin}
               >
                 Annuler
               </button>
-              <button className="kiosk-admin-prompt-confirm" onClick={handleAdminAccess}>
-                Accéder
+              <button
+                className="kiosk-admin-prompt-confirm"
+                onClick={handleAdminAccess}
+                disabled={isVerifyingAdmin}
+              >
+                {isVerifyingAdmin ? "Vérification..." : "Accéder"}
               </button>
             </div>
           </div>

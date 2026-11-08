@@ -75,9 +75,7 @@ serviceAccountKey*.json
 *.key
 *.cert
 *.crt
-# Allow public dev certificates if explicitly needed
-!AmenConnect/public/server.key
-!AmenConnect/public/server.crt
+.certs/
 
 # Mobile Build Artifacts (Capacitor / Android / iOS)
 AmenConnect/android/.gradle/

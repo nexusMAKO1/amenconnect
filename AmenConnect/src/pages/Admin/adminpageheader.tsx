@@ -76,8 +76,8 @@ const AdminPageHeader: React.FC<AdminPageHeaderProps> = ({ title, subtitle }) =>
 
   // Set up Socket.IO connection for real-time notifications
   useEffect(() => {
-    // Specify the server URL explicitly
-    const socket = io("http://localhost:3000");
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "");
+    const socket = io(socketUrl, { path: "/socket.io" });
 
     socket.on("connect", () => {
       // connection established

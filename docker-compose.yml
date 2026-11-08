@@ -66,6 +66,10 @@ services:
       - EMAIL_USER=${EMAIL_USER:-noreply@amenbank.com.tn}
       - EMAIL_PASS=${EMAIL_PASS:-smtp_password}
       - FLASK_API_URL=http://bot:5000
+      - KIOSK_MAINTENANCE_PASSWORD=${KIOSK_MAINTENANCE_PASSWORD:-AmenKioskAdmin2026!}
+      - JAAS_APP_ID=${JAAS_APP_ID:-}
+      - JAAS_KEY_ID=${JAAS_KEY_ID:-}
+      - JAAS_PRIVATE_KEY=${JAAS_PRIVATE_KEY:-}
     depends_on:
       mongodb:
         condition: service_healthy
