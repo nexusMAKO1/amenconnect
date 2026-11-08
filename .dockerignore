@@ -1,0 +1,43 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Node dependencies and build artifacts
+**/node_modules/
+**/dist/
+**/build/
+**/www/
+**/.output/
+**/.vite/
+npm-debug.log*
+yarn-debug.log*
+
+# Python caches and virtual environments
+**/__pycache__/
+**/*.py[cod]
+**/*.so
+**/.venv/
+**/env/
+**/venv/
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+firebaseadminsdk*.json
+*firebase*.json
+serviceAccountKey*.json
+
+# Mobile & IDE files
+**/.DS_Store
+**/Thumbs.db
+**/.idea/
+**/.vscode/
+**/coverage/
+**/cypress/videos/
+**/cypress/screenshots/
+AmenConnect/android/
+AmenConnect/ios/
+

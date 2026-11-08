@@ -28,6 +28,7 @@
     "@types/recharts": "^1.8.29",
     "axios": "^1.7.9",
     "body-parser": "^1.20.3",
+    "chart.js": "^4.4.8",
     "cors": "^2.8.5",
     "country-state-city": "^3.2.1",
     "crypto-json": "^2.0.2",

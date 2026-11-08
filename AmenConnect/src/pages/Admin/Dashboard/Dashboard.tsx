@@ -15,7 +15,7 @@ import {
   checkmarkCircleOutline,
   idCardOutline,
 } from "ionicons/icons";
-import "./dashboard.css";
+import "./Dashboard.css";
 import { useAdminAuth } from "../../../AdminAuthContext";
 import SidebarAdmin from "../../../components/SidebarAdmin";
 import AdminPageHeader from "../adminpageheader";

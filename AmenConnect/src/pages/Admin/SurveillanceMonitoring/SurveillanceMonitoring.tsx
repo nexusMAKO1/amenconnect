@@ -31,7 +31,7 @@ import {
   filterOutline,
   closeCircleOutline,
 } from "ionicons/icons"
-import "./surveillanceMonitoring.css"
+import "./SurveillanceMonitoring.css"
 import "./leaflet-overrides.css"
 import SidebarAdmin from "../../../components/SidebarAdmin"
 import { useAdminAuth } from "../../../AdminAuthContext"

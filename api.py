@@ -33,6 +33,9 @@ db = mongo_client.get_database()  # Uses the default database from the URI
 kiosks_collection = db.kiosks     # Assumes kiosks are stored in the 'kiosks' collection
 
 def get_serial_number():
+    env_serial = os.getenv("KIOSK_SERIAL_NUMBER")
+    if env_serial:
+        return env_serial
     system = platform.system()
     try:
         if system == "Windows":
@@ -157,6 +160,14 @@ def perform_diagnostic():
         diagnostic["load_average"] = "Not available on this system"
 
     return diagnostic
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({"status": "ok", "service": "hardware-daemon", "serial": get_serial_number()})
+
+@app.route('/serial', methods=['GET'])
+def get_serial_route():
+    return jsonify({"serial_number": get_serial_number()})
 
 @app.route('/diagnostic', methods=['POST'])
 def diagnostic_api():
@@ -312,4 +323,5 @@ if __name__ == '__main__':
     online_thread = threading.Thread(target=keep_online, daemon=True)
     online_thread.start()
 
-    app.run(host='0.0.0.0', port=3000)
+    port = int(os.getenv("PORT", 5001))
+    app.run(host='0.0.0.0', port=port)

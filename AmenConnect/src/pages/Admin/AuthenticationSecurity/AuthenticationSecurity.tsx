@@ -9,7 +9,7 @@ import {
   saveOutline,
   logOutOutline,
 } from "ionicons/icons"
-import "./authenticationSecurity.css"
+import "./AuthenticationSecurity.css"
 import SidebarAdmin from "../../../components/SidebarAdmin"
 import { useAdminAuth } from "../../../AdminAuthContext"
 import AdminPageHeader from "../adminpageheader"

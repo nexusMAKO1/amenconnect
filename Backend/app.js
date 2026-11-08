@@ -48,8 +48,19 @@ app.use(helmet())
 app.use(express.json({ limit: "50mb" }))
 app.use(express.urlencoded({ limit: "50mb", extended: true }))
 app.use(cookieParser())
+// Setup CORS origins
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:8100,http://localhost:8200")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || "http://localhost:8200",
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*") || process.env.NODE_ENV !== "production") {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
   credentials: true,
 }))
 app.options('*', cors())
@@ -94,6 +105,11 @@ app.use("/api/kiosk", kioskRoutes)
 app.use("/api/", logoRoutes)
 app.use("/api/theme", themeRoutes)
 app.use("/api/", themesPresetRoutes)
+
+// Healthcheck endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "backend", timestamp: new Date().toISOString() });
+});
 
 // Swagger documentation route
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs))

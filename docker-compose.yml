@@ -1,0 +1,170 @@
+services:
+  # ------------------------------------------
+  # 1. MongoDB Database
+  # ------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: amenconnect-mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27018}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - amenconnect_net
+    healthcheck:
+      test: [ "CMD-SHELL", "mongosh --eval 'db.runCommand(\"ping\").ok' --quiet || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
+  # ------------------------------------------
+  # 2. AmenBot (Conversational AI & WhatsApp Service)
+  # ------------------------------------------
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: amenconnect-bot
+    restart: unless-stopped
+    ports:
+      - "${BOT_PORT:-5050}:5000"
+    environment:
+      - PORT=5000
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - TOGETHER_MODEL=${TOGETHER_MODEL:-meta-llama/Llama-3.3-70B-Instruct-Turbo}
+      - GREEN_API_INSTANCE_ID=${GREEN_API_INSTANCE_ID:-}
+      - GREEN_API_TOKEN=${GREEN_API_TOKEN:-}
+    networks:
+      - amenconnect_net
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:5000/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ------------------------------------------
+  # 3. Core Node.js Backend API & WebSockets
+  # ------------------------------------------
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: amenconnect-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGO_URI=mongodb://mongodb:27017/client
+      - CLIENT_ORIGIN=http://localhost:8100,http://localhost:8200,http://127.0.0.1:8100,http://127.0.0.1:8200
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_amenconnect_change_me_in_production}
+      - SESSION_SECRET=${SESSION_SECRET:-super_secret_session_key_amenconnect_change_me}
+      - EMAIL_USER=${EMAIL_USER:-noreply@amenbank.com.tn}
+      - EMAIL_PASS=${EMAIL_PASS:-smtp_password}
+      - FLASK_API_URL=http://bot:5000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      bot:
+        condition: service_healthy
+    networks:
+      - amenconnect_net
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ------------------------------------------
+  # 4. Hardware & Totem Peripheral Daemon
+  # ------------------------------------------
+  hardware-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile.hardware
+    container_name: amenconnect-hardware-daemon
+    restart: unless-stopped
+    ports:
+      - "${HARDWARE_PORT:-5001}:5001"
+    environment:
+      - PORT=5001
+      - MONGO_URI=mongodb://mongodb:27017/client
+      - KIOSK_SERIAL_NUMBER=${KIOSK_SERIAL_NUMBER:-KIOSK-DOCKER-001}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - amenconnect_net
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:5001/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ------------------------------------------
+  # 5. AmenConnect Web & Mobile Client Application
+  # ------------------------------------------
+  amenconnect:
+    build:
+      context: .
+      dockerfile: AmenConnect/Dockerfile
+    container_name: amenconnect-client
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_PORT:-8100}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - amenconnect_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+  # ------------------------------------------
+  # 6. AmenKiosk Interactive Totem Terminal
+  # ------------------------------------------
+  amenkiosk:
+    build:
+      context: .
+      dockerfile: AmenKiosk/Dockerfile
+    container_name: amenconnect-kiosk
+    restart: unless-stopped
+    ports:
+      - "${KIOSK_PORT:-8200}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - amenconnect_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+# ------------------------------------------
+# Persistent Storage Volumes
+# ------------------------------------------
+volumes:
+  mongodb_data:
+    name: amenconnect_mongodb_data
+    driver: local
+
+# ------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------
+networks:
+  amenconnect_net:
+    name: amenconnect_network
+    driver: bridge

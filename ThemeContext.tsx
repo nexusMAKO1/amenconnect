@@ -1,5 +1,5 @@
 // ThemeContext.tsx
-import React, { createContext, useState, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 
 export interface Theme {
   kioskPrimary: string;
@@ -44,6 +44,8 @@ export const ThemeContext = createContext<ThemeContextType>({
   theme: defaultTheme,
   setTheme: () => {},
 });
+
+export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(defaultTheme);

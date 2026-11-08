@@ -4,10 +4,21 @@ const { Server } = require("socket.io");
 let io;
 
 const initSocket = (server) => {
+  const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:8100,http://localhost:8200")
+    .split(",")
+    .map((o) => o.trim())
+    .concat([
+      "http://localhost:8100",
+      "https://localhost:8100",
+      "http://localhost:8200",
+      "https://localhost:8200"
+    ]);
+
   io = new Server(server, {
     cors: {
-      origin: ["http://localhost:8200", "https://localhost:8200"],
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 

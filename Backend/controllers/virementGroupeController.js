@@ -1,6 +1,6 @@
 //controllers/virementGroupeController.js
 const Compte = require("../models/Compte");
-const VirementGroupe = require("../models/virementGroupe");
+const VirementGroupe = require("../models/VirementGroupe");
 const mongoose = require("mongoose");
 
 exports.createVirementGroupe = async (req, res) => {
