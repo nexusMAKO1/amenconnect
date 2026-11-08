@@ -14,6 +14,7 @@ import {
   IonSegment,
   IonSegmentButton,
   IonLabel,
+  useIonToast,
 } from "@ionic/react"
 import {
   walletOutline,
@@ -74,6 +75,7 @@ interface Transaction {
 const CompteKiosk: React.FC = () => {
   const { profile, authLoading } = useAuth()
   const history = useHistory()
+  const [presentToast] = useIonToast()
   const [activeTab, setActiveTab] = useState<string>("overview")
 
   // Credit state variables
@@ -236,7 +238,12 @@ const CompteKiosk: React.FC = () => {
       setUserCredits(data)
     } catch (error) {
       console.error("Error fetching credits:", error)
-      alert("Erreur lors du chargement des crédits")
+      presentToast({
+        message: "Erreur lors du chargement des crédits.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     } finally {
       setLoadingCredits(false)
     }
@@ -261,7 +268,13 @@ const CompteKiosk: React.FC = () => {
 
   const handleSubmitCredit = async () => {
     if (!typeCreditValue || !montantValue || !dureeValue || !RevenuMensuel) {
-      return alert("Tous les champs sont obligatoires")
+      presentToast({
+        message: "Tous les champs sont obligatoires.",
+        duration: 3000,
+        position: "top",
+        color: "warning",
+      })
+      return
     }
     setIsSubmitting(true)
     try {
@@ -286,10 +299,20 @@ const CompteKiosk: React.FC = () => {
       setDureeValue("")
       setRevenuMensuel(0)
       setShowCreditSection(false)
-      alert("Demande de crédit soumise avec succès")
+      presentToast({
+        message: "Demande de crédit soumise avec succès.",
+        duration: 3000,
+        position: "top",
+        color: "success",
+      })
     } catch (err) {
       console.error(err)
-      alert("Impossible d'enregistrer la demande")
+      presentToast({
+        message: "Impossible d'enregistrer la demande de crédit.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     } finally {
       setIsSubmitting(false)
     }

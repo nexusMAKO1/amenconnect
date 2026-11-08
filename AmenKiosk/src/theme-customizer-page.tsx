@@ -1,9 +1,11 @@
 // theme-customizer-page.tsx
 import React, { useContext, useState } from 'react';
+import { useIonToast } from '@ionic/react';
 import { ThemeContext, Theme } from '../../ThemeContext';
 
 const ThemeCustomizerPage: React.FC = () => {
   const { theme, setTheme } = useContext(ThemeContext);
+  const [presentToast] = useIonToast();
   const [localTheme, setLocalTheme] = useState<Theme>(theme);
 
   // Update local state when a color value is changed.
@@ -146,12 +148,28 @@ const ThemeCustomizerPage: React.FC = () => {
       }
       
       if (response.ok) {
-        alert('Theme settings updated successfully in the database.');
+        presentToast({
+          message: 'Paramètres du thème enregistrés avec succès.',
+          duration: 2500,
+          position: 'top',
+          color: 'success',
+        });
       } else {
-        alert('Failed to update theme settings: ' + (responseData || 'Unknown error'));
+        presentToast({
+          message: 'Échec de mise à jour des paramètres du thème.',
+          duration: 3000,
+          position: 'top',
+          color: 'danger',
+        });
       }
     } catch (error) {
       console.error("Error updating theme settings:", error);
+      presentToast({
+        message: 'Erreur réseau lors de la mise à jour du thème.',
+        duration: 3000,
+        position: 'top',
+        color: 'danger',
+      });
     }
   };
 

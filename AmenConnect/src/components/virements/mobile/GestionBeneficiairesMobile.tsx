@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import type React from "react"
-import { IonIcon, IonSearchbar, IonButton, IonInput } from "@ionic/react"
+import { IonIcon, IonSearchbar, IonButton, IonInput, useIonAlert } from "@ionic/react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   personOutline,
@@ -19,6 +19,7 @@ interface GestionBeneficiairesMobileProps {
 }
 
 const GestionBeneficiairesMobile: React.FC<GestionBeneficiairesMobileProps> = ({ onAddClick }) => {
+  const [presentAlert] = useIonAlert()
   const { beneficiaires, loading, error, addBeneficiaire, updateBeneficiaire, deleteBeneficiaire } = useBeneficiaries()
 
   const [filteredBeneficiaires, setFilteredBeneficiaires] = useState<Beneficiaire[]>([])
@@ -129,17 +130,28 @@ const GestionBeneficiairesMobile: React.FC<GestionBeneficiairesMobileProps> = ({
     }
   }
 
-  const handleDeleteBeneficiaire = async (id: string) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce bénéficiaire ?")) {
-      try {
-        await deleteBeneficiaire(id)
-        setFormSuccess("Bénéficiaire supprimé avec succès")
-        setTimeout(() => setFormSuccess(""), 3000)
-      } catch (error: any) {
-        console.error("Error deleting beneficiary:", error)
-        setFormError(error.message || "Une erreur est survenue lors de la suppression du bénéficiaire")
-      }
-    }
+  const handleDeleteBeneficiaire = (id: string) => {
+    presentAlert({
+      header: "Confirmation",
+      message: "Êtes-vous sûr de vouloir supprimer ce bénéficiaire ?",
+      buttons: [
+        { text: "Annuler", role: "cancel" },
+        {
+          text: "Supprimer",
+          role: "destructive",
+          handler: async () => {
+            try {
+              await deleteBeneficiaire(id)
+              setFormSuccess("Bénéficiaire supprimé avec succès")
+              setTimeout(() => setFormSuccess(""), 3000)
+            } catch (error: any) {
+              console.error("Error deleting beneficiary:", error)
+              setFormError(error.message || "Une erreur est survenue lors de la suppression du bénéficiaire")
+            }
+          },
+        },
+      ],
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

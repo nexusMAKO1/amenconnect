@@ -125,12 +125,18 @@ const VirementsGroupes: React.FC<VirementsGroupesProps> = ({ profile }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setError("")
     setSuccess(false)
 
     // Basic validations
     if (!compteSource) {
       setError("Veuillez sélectionner un compte source")
+      return
+    }
+
+    if (selectedCompte && totalAmount > selectedCompte.solde) {
+      setError(`Solde insuffisant pour ce virement groupé (${formatCurrency(totalAmount)} requis, ${formatCurrency(selectedCompte.solde)} disponible)`)
       return
     }
 

@@ -14,6 +14,7 @@ const KioskSetup: React.FC = () => {
   const [showToast, setShowToast] = useState<{ message: string; color: string } | null>(null)
   const [errors, setErrors] = useState<{ serialNumber?: string; agencyName?: string; agencyLocation?: string }>({})
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false)
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   useEffect(() => {
     async function fetchDeviceSerial() {
       try {
@@ -53,8 +54,10 @@ const KioskSetup: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
 
     if (validateForm()) {
+      setIsSubmitting(true)
       const kioskData = {
         SN: serialNumber,
         agencyName,
@@ -105,6 +108,8 @@ const KioskSetup: React.FC = () => {
         }
 
         setShowToast({ message: errorMessage, color: "danger" })
+      } finally {
+        setIsSubmitting(false)
       }
     }
   }
@@ -199,9 +204,9 @@ const KioskSetup: React.FC = () => {
                 </div>
 
                 <div className="button-container">
-                  <IonButton type="submit" expand="block" className="kiosk-btn">
+                  <IonButton type="submit" expand="block" className="kiosk-btn" disabled={isSubmitting}>
                     <IonIcon icon={checkmarkCircleOutline} slot="start" />
-                    Soumettre
+                    {isSubmitting ? "Enregistrement..." : "Soumettre"}
                   </IonButton>
                 </div>
               </form>

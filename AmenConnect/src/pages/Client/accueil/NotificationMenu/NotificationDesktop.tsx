@@ -66,6 +66,7 @@ const NotificationDesktop: React.FC = () => {
     });
     
     return () => {
+      socketRef.current?.off("virementReceived");
       socketRef.current?.disconnect();
     };
   }, [userId]);  // Only run when userId changes (e.g., after profile load)

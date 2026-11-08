@@ -21,6 +21,7 @@ import {
   IonLabel,
   IonText,
   useIonToast,
+  useIonAlert,
 } from "@ionic/react"
 import {
   peopleOutline,
@@ -80,6 +81,18 @@ interface AccountRequest {
 
 const UserManagement: React.FC = () => {
   const { authLoading } = useAdminAuth()
+  const [presentToast] = useIonToast()
+  const [presentAlert] = useIonAlert()
+
+  const showToast = (message: string, color: "success" | "danger" | "warning" = "success") => {
+    presentToast({
+      message,
+      duration: 3000,
+      position: "top",
+      color,
+    })
+  }
+
   const [activeTab, setActiveTab] = useState<"list" | "create" | "reset" | "requests">("list")
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
@@ -203,7 +216,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       });
       const data = await response.json();
       if (response.ok) {
-        alert("Admin updated successfully!");
+        showToast("Administrateur mis à jour avec succès !", "success");
         setActiveTab("list");
         const refreshed = await fetch("/api/admin/list");
         const refreshedData = await refreshed.json();
@@ -220,11 +233,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           permissions: [],
         });
       } else {
-        alert("Error: " + data.message);
+        showToast("Erreur: " + data.message, "danger");
       }
     } catch (error) {
       console.error("Update error:", error);
-      alert("An error occurred while updating the admin.");
+      showToast("Une erreur est survenue lors de la mise à jour de l'administrateur.", "danger");
     }
   } else {
       // Existing registration logic (creating a new admin)
@@ -238,42 +251,52 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         });
         const data = await response.json();
         if (response.ok) {
-          alert("Admin created successfully!");
+          showToast("Administrateur créé avec succès !", "success");
           setActiveTab("list");
           const refreshed = await fetch("/api/admin/list");
           const refreshedData = await refreshed.json();
           setAdmins(refreshedData.admins || []);
         } else {
-          alert("Error: " + data.message);
+          showToast("Erreur: " + data.message, "danger");
         }
       } catch (error) {
         console.error("Registration error:", error);
-        alert("An error occurred while creating the admin.");
+        showToast("Une erreur est survenue lors de la création de l'administrateur.", "danger");
       }
     }
   };
   
 
-  const handleDelete = async (adminId: string) => {
-    if (window.confirm("Are you sure you want to delete this admin?")) {
-      try {
-        const response = await fetch(`/api/admin/list/${adminId}`, {
-          method: "DELETE",
-          credentials: "include", // Include cookies for auth
-        })
-        const data = await response.json()
-        if (response.ok) {
-          alert("Admin deleted successfully")
-          // Remove the deleted admin from your state
-          setAdmins((prev) => prev.filter((admin) => admin._id !== adminId))
-        } else {
-          alert("Error: " + data.message)
-        }
-      } catch (error) {
-        console.error("Error deleting admin:", error)
-        alert("An error occurred while deleting the admin.")
-      }
-    }
+  const handleDelete = (adminId: string) => {
+    presentAlert({
+      header: "Confirmation",
+      message: "Êtes-vous sûr de vouloir supprimer cet administrateur ?",
+      buttons: [
+        { text: "Annuler", role: "cancel" },
+        {
+          text: "Supprimer",
+          role: "destructive",
+          handler: async () => {
+            try {
+              const response = await fetch(`/api/admin/list/${adminId}`, {
+                method: "DELETE",
+                credentials: "include", // Include cookies for auth
+              })
+              const data = await response.json()
+              if (response.ok) {
+                showToast("Administrateur supprimé avec succès.", "success")
+                setAdmins((prev) => prev.filter((admin) => admin._id !== adminId))
+              } else {
+                showToast("Erreur: " + data.message, "danger")
+              }
+            } catch (error) {
+              console.error("Error deleting admin:", error)
+              showToast("Une erreur est survenue lors de la suppression de l'administrateur.", "danger")
+            }
+          },
+        },
+      ],
+    })
   }
 
   const handleCinChange = (e: CustomEvent) => {
@@ -336,57 +359,72 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   // Handle account request approval
 // Function to handle account request approval
-const handleApproveRequest = async (requestId: string) => {
-  if (window.confirm("Êtes-vous sûr de vouloir approuver cette demande?")) {
-    try {
-      const response = await fetch(`/api/account-creation/${requestId}/approve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (response.ok) {
-        alert("Demande approuvée avec succès");
-        // Update the status in the local state
-        setAccountRequests((prev) =>
-          prev.map((req) => (req._id === requestId ? { ...req, status: "approved" } : req)),
-        );
-      } else {
-        const data = await response.json();
-        alert("Erreur: " + (data.message || "Une erreur est survenue"));
-      }
-    } catch (error) {
-      console.error("Error approving request:", error);
-      alert("Une erreur est survenue lors de l'approbation de la demande");
-    }
-  }
+const handleApproveRequest = (requestId: string) => {
+  presentAlert({
+    header: "Confirmation",
+    message: "Êtes-vous sûr de vouloir approuver cette demande ?",
+    buttons: [
+      { text: "Annuler", role: "cancel" },
+      {
+        text: "Approuver",
+        handler: async () => {
+          try {
+            const response = await fetch(`/api/account-creation/${requestId}/approve`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+            });
+            if (response.ok) {
+              showToast("Demande approuvée avec succès.", "success");
+              setAccountRequests((prev) =>
+                prev.map((req) => (req._id === requestId ? { ...req, status: "approved" } : req)),
+              );
+            } else {
+              const data = await response.json();
+              showToast("Erreur: " + (data.message || "Une erreur est survenue"), "danger");
+            }
+          } catch (error) {
+            console.error("Error approving request:", error);
+            showToast("Une erreur est survenue lors de l'approbation de la demande.", "danger");
+          }
+        },
+      },
+    ],
+  });
 };
 
-
-      
-
   // Handle account request rejection
-  const handleRejectRequest = async (requestId: string) => {
-    if (window.confirm("Are you sure you want to reject this request?")) {
-      try {
-        const response = await fetch(`/api/account-creation/${requestId}/reject`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (response.ok) {
-          alert("Demande rejetée avec succès");
-          // Update the status in the local state
-          setAccountRequests((prev) =>
-            prev.map((req) => (req._id === requestId ? { ...req, status:
-              "rejected" } : req)),
-          );
-          } else {
-            const data = await response.json();
-            alert("Erreur: " + (data.message || "Une erreur est survenue"));
-          }
-        } catch (error) {
-          console.error("Error rejecting request:", error);
-          alert("Une erreur est survenue lors du rejet de la demande");
-        }
-    }
+  const handleRejectRequest = (requestId: string) => {
+    presentAlert({
+      header: "Confirmation",
+      message: "Êtes-vous sûr de vouloir rejeter cette demande ?",
+      buttons: [
+        { text: "Annuler", role: "cancel" },
+        {
+          text: "Rejeter",
+          role: "destructive",
+          handler: async () => {
+            try {
+              const response = await fetch(`/api/account-creation/${requestId}/reject`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+              });
+              if (response.ok) {
+                showToast("Demande rejetée avec succès.", "warning");
+                setAccountRequests((prev) =>
+                  prev.map((req) => (req._id === requestId ? { ...req, status: "rejected" } : req)),
+                );
+              } else {
+                const data = await response.json();
+                showToast("Erreur: " + (data.message || "Une erreur est survenue"), "danger");
+              }
+            } catch (error) {
+              console.error("Error rejecting request:", error);
+              showToast("Une erreur est survenue lors du rejet de la demande.", "danger");
+            }
+          },
+        },
+      ],
+    });
   }
 
   const handleViewRequestDetails = (request: AccountRequest) => {

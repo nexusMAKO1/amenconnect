@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, ChangeEvent } from "react"
-import { IonIcon } from "@ionic/react"
+import { IonIcon, useIonToast } from "@ionic/react"
 import { imageOutline, cloudUploadOutline, trashOutline } from "ionicons/icons"
 
 interface LogoUploaderProps {
@@ -11,6 +11,7 @@ interface LogoUploaderProps {
 }
 
 export default function LogoUploader({ currentLogo, onLogoChange, className = "" }: LogoUploaderProps) {
+  const [presentToast] = useIonToast()
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentLogo || null)
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -21,13 +22,23 @@ export default function LogoUploader({ currentLogo, onLogoChange, className = ""
 
     // Validate file type
     if (!file.type.match(/image\/(jpeg|jpg|png|gif|svg\+xml)/i)) {
-      alert("Format de fichier non supporté. Veuillez utiliser JPG, PNG, GIF ou SVG.")
+      presentToast({
+        message: "Format de fichier non supporté. Veuillez utiliser JPG, PNG, GIF ou SVG.",
+        duration: 3000,
+        position: "top",
+        color: "warning",
+      })
       return
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      alert("Le fichier est trop volumineux. La taille maximale est de 2MB.")
+      presentToast({
+        message: "Le fichier est trop volumineux. La taille maximale est de 2MB.",
+        duration: 3000,
+        position: "top",
+        color: "warning",
+      })
       return
     }
 
@@ -57,9 +68,20 @@ export default function LogoUploader({ currentLogo, onLogoChange, className = ""
       // data.logoUrl should contain the URL to the logo stored in /public/uploads
       onLogoChange(data.logoUrl)
       setPreviewUrl(data.logoUrl)
+      presentToast({
+        message: "Logo téléchargé avec succès.",
+        duration: 2500,
+        position: "top",
+        color: "success",
+      })
     } catch (error) {
       console.error("Error uploading logo:", error)
-      alert("Une erreur est survenue lors du téléchargement du logo.")
+      presentToast({
+        message: "Une erreur est survenue lors du téléchargement du logo.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     } finally {
       setIsUploading(false)
     }

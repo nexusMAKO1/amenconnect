@@ -21,6 +21,12 @@ export function useAdminLogin() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMessage("Veuillez saisir une adresse email valide.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Call the admin login endpoint
       const response = await axios.post(

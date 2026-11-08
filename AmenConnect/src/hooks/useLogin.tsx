@@ -21,6 +21,12 @@ export function useLogin() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMessage("Veuillez saisir une adresse email valide.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Send credentials to your backend
       const response = await axios.post(

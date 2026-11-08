@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import type React from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { IonIcon } from "@ionic/react"
+import { IonIcon, useIonToast } from "@ionic/react"
 import {
   walletOutline,
   personOutline,
@@ -23,6 +23,7 @@ interface Compte {
 }
 
 const VirementSimple: React.FC = () => {
+  const [presentToast] = useIonToast()
   const { profile } = useAuth()
   const [comptes, setComptes] = useState<Compte[]>([])
   const { beneficiaires, loading: beneficiariesLoading, error: beneficiariesError } = useBeneficiaries()
@@ -74,11 +75,33 @@ const VirementSimple: React.FC = () => {
 
     // Basic validations
     if (!compteSource || !beneficiaireRIB || !montant) {
-      alert("Veuillez remplir tous les champs obligatoires")
+      presentToast({
+        message: "Veuillez remplir tous les champs obligatoires.",
+        duration: 3000,
+        position: "top",
+        color: "warning",
+      })
       return
     }
-    if (Number.parseFloat(montant) <= 0) {
-      alert("Le montant doit être supérieur à 0")
+    const numMontant = Number.parseFloat(montant)
+    if (isNaN(numMontant) || numMontant <= 0) {
+      presentToast({
+        message: "Le montant du virement doit être supérieur à 0 TND.",
+        duration: 3000,
+        position: "top",
+        color: "warning",
+      })
+      return
+    }
+
+    const selectedSource = comptes.find((c) => c.numéroCompte === compteSource)
+    if (selectedSource && numMontant > selectedSource.solde) {
+      presentToast({
+        message: `Solde insuffisant pour effectuer ce virement. Solde disponible : ${selectedSource.solde} TND`,
+        duration: 3500,
+        position: "top",
+        color: "danger",
+      })
       return
     }
 

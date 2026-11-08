@@ -20,6 +20,7 @@ interface AccountCreationFormProps {
 const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, resetTimer }) => {
   const [presentToast] = useIonToast()
   const [currentPage, setCurrentPage] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     nom: "",
     prenom: "",
@@ -290,17 +291,29 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, reset
     const errors: string[] = []
 
     // Check required fields on page 1
-    if (!formData.nom) errors.push("Le nom est requis")
-    if (!formData.prenom) errors.push("Le prénom est requis")
+    if (!formData.nom?.trim()) errors.push("Le nom est requis")
+    if (!formData.prenom?.trim()) errors.push("Le prénom est requis")
     if (!formData.dateNaissance) errors.push("La date de naissance est requise")
-    if (!formData.lieuNaissance) errors.push("Le lieu de naissance est requis")
-    if (!formData.numeroCIN) errors.push("Le numéro CIN est requis")
+    if (!formData.lieuNaissance?.trim()) errors.push("Le lieu de naissance est requis")
+    if (!formData.numeroCIN?.trim()) {
+      errors.push("Le numéro CIN est requis")
+    } else if (!/^\d{8}$/.test(formData.numeroCIN.trim())) {
+      errors.push("Le numéro CIN doit comporter exactement 8 chiffres")
+    }
     if (!formData.dateDelivranceCIN) errors.push("La date de délivrance CIN est requise")
-    if (!formData.lieuDelivranceCIN) errors.push("Le lieu de délivrance CIN est requis")
+    if (!formData.lieuDelivranceCIN?.trim()) errors.push("Le lieu de délivrance CIN est requis")
     if (!formData.situationFamille) errors.push("La situation de famille est requise")
-    if (!formData.email) errors.push("L'email est requis")
-    if (!formData.numeroGSM) errors.push("Le numéro de GSM est requis")
-    if (!formData.adresseDomicile) errors.push("L'adresse domicile est requise")
+    if (!formData.email?.trim()) {
+      errors.push("L'email est requis")
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errors.push("Format d'adresse email invalide")
+    }
+    if (!formData.numeroGSM?.trim()) {
+      errors.push("Le numéro de GSM est requis")
+    } else if (!/^(?:\+216)?[2459]\d{7}$|^\d{8}$/.test(formData.numeroGSM.replace(/\s+/g, ""))) {
+      errors.push("Le numéro de GSM doit être un numéro valide à 8 chiffres")
+    }
+    if (!formData.adresseDomicile?.trim()) errors.push("L'adresse domicile est requise")
 
     setFormErrors(errors)
     return errors.length === 0
@@ -420,6 +433,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, reset
     const handleSubmit = async (e: React.FormEvent) => {
       if (resetTimer) resetTimer();
       e.preventDefault();
+      if (isSubmitting) return;
     
       // Validate based on current page
       if (currentPage === 1 && !validatePage1()) return;
@@ -427,6 +441,7 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, reset
       if (currentPage === 3 && !validatePage3()) return;
       if (currentPage === 4 && !validatePage4()) return;
     
+      setIsSubmitting(true);
       // Get signature as a data URL
       const signatureDataUrl = signatureCanvasRef.current?.getCanvas().toDataURL("image/png");
     
@@ -485,6 +500,8 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, reset
           color: "danger",
           position: "top",
         });
+      } finally {
+        setIsSubmitting(false);
       }
     };
     
@@ -635,8 +652,8 @@ const AccountCreationForm: React.FC<AccountCreationFormProps> = ({ onBack, reset
                 Suivant →
               </button>
             ) : (
-              <button type="submit" className="acf-submit-btn">
-                Soumettre
+              <button type="submit" className="acf-submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Envoi en cours..." : "Soumettre"}
               </button>
             )}
           </div>

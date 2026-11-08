@@ -21,6 +21,7 @@ import {
   IonInput,
   IonTextarea,
   IonRange,
+  useIonToast,
 } from "@ionic/react"
 import {
   walletOutline,
@@ -83,6 +84,7 @@ interface SimulationResults {
 }
 
 const ComptePageDesktop: React.FC = () => {
+  const [presentToast] = useIonToast()
   const { profile, authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<string>("overview")
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
@@ -147,7 +149,12 @@ const ComptePageDesktop: React.FC = () => {
       setUserCredits(data)
     } catch (error) {
       console.error("Error fetching credits:", error)
-      alert("Erreur lors du chargement des crédits")
+      presentToast({
+        message: "Erreur lors du chargement des crédits.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     } finally {
       setLoadingCredits(false)
     }
@@ -339,7 +346,13 @@ const ComptePageDesktop: React.FC = () => {
 
   const handleSubmitCredit = async () => {
     if (!typeCreditValue || !montantValue || !dureeValue || !RevenuMensuel) {
-      return alert("Tous les champs sont obligatoires")
+      presentToast({
+        message: "Tous les champs sont obligatoires pour la demande de crédit.",
+        duration: 3000,
+        position: "top",
+        color: "warning",
+      })
+      return
     }
     setIsSubmitting(true)
     try {
@@ -359,13 +372,25 @@ const ComptePageDesktop: React.FC = () => {
       if (!resp.ok) throw new Error("Erreur serveur")
       await fetchUserCredits()
 
+      presentToast({
+        message: "Votre demande de crédit a été enregistrée avec succès.",
+        duration: 3500,
+        position: "top",
+        color: "success",
+      })
+
       setTypeCreditValue("")
       setMontantValue(0)
       setDureeValue("")
       setRevenuMensuel(0)
     } catch (err) {
       console.error(err)
-      alert("Impossible d'enregistrer la demande")
+      presentToast({
+        message: "Impossible d'enregistrer la demande de crédit.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     } finally {
       setIsSubmitting(false)
     }

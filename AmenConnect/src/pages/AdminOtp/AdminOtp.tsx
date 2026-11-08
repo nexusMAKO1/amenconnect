@@ -76,6 +76,7 @@ export default function AdminOtp() {
 // Verify OTP by calling backend endpoint
 const handleVerifyOtp = async (e: React.FormEvent) => {
   e.preventDefault();
+  if (isLoading) return;
 
   if (otp.length !== 6) {
     setErrorMessage("Veuillez entrer un code à 6 chiffres");

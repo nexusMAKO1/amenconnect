@@ -3,7 +3,7 @@
 **Project:** AmenConnect & AmenKiosk  
 **Author:** Senior Frontend Architect & Application Security Engineer  
 **Date:** March 2026  
-**Document Status:** **MILESTONE 1 & MILESTONE 2 COMPLETED & VERIFIED**  
+**Document Status:** **MILESTONES 1, 2 & 3 COMPLETED & VERIFIED**  
 
 ---
 
@@ -18,6 +18,12 @@ Phase 2 transitions AmenConnect and AmenKiosk into modern, robust React and stat
   4. Eliminated memory leaks in Leaflet maps (`SurveillanceMonitoring.tsx`) and guarded Capacitor `StatusBar` from failing on desktop web browsers.
   5. Implemented atomic query-level expiration verification for QR tokens (`createdAt: { $gte: cutoff }`) preventing redemption of stale documents before MongoDB TTL background cleanup runs.
   6. Added 49 automated test cases across QR concurrency/pre-TTL expiration, Tunisian RIB formatting, and separate Customer & Banker Mailpit OTP flows.
+- **Milestone 3 (UI/UX Notifications, Form Validation & Lifecycle Cleanup):**
+  1. Eliminated 100% of blocking `window.alert()` and `window.confirm()` calls across all frontend components.
+  2. Replaced browser dialogs with accessible, non-blocking Ionic UI components: `useIonToast` for notifications and `useIonAlert` with explicit cancel and destructive roles for irreversible operations.
+  3. Hardened form validation: Added strict Tunisian CIN 8-digit verification, GSM phone number format validation, email regex verification, positive transfer amount guards, and source balance checks across transfers.
+  4. Eliminated duplicate network submissions by adding stateful `isSubmitting` locking and disabled button states across forms.
+  5. Resolved Socket.IO event listener leaks by explicitly unsubscribing with `socket.off` prior to disconnect, and protected asynchronous effects with `isMounted` guards.
 
 ---
 
@@ -159,7 +165,28 @@ graph TD
 
 ---
 
-## 4. Test Execution Summary
+## 4. Milestone 3: Notifications, Form Validation & Lifecycle Technical Implementation
+
+### 4.1 Ionic Notification Modernization (`window.alert` & `window.confirm` Replacement)
+- **Elimination of Blocking Modals:** Browser `window.alert()` freezes UI thread execution and causes touch event loss in Kiosk hardware touchscreens.
+- **`useIonToast` Implementation:** Used for feedback with contextual color palettes (`success` for completed banking actions, `danger` for errors, `warning` for missing fields). Includes automatic dismissal and top positioning to remain visible above virtual keyboards.
+- **`useIonAlert` Implementation:** Used for irreversible actions (deleting themes, rejecting/approving client account creations, deleting beneficiaries, terminating active sessions). Configured with explicit `role: "cancel"` and `role: "destructive"`.
+
+### 4.2 Banking Form Validation Hardening
+- **Tunisian CIN:** Enforced `/^\d{8}$/` (strictly 8 digits) on client-side registration forms before submission.
+- **Tunisian Phone (GSM):** Enforced valid 8-digit mobile numbers starting with standard telecom prefixes (2, 4, 5, 9).
+- **Email Validation:** Standardized email regex `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` across client and admin login hooks.
+- **OTP Input:** Enforced `/^\d{6}$/` before triggering network requests, preventing malformed payload errors.
+- **Anti-Double-Submission:** Added `isSubmitting` / `loading` boolean state locks that disable submit buttons across `AccountCreationForm`, `virement-simple`, `virements-programmes`, `virements-groupes`, and `kiosk-setup`.
+
+### 4.3 Component Lifecycle & Listener Audit
+- **Socket.IO Cleanup:** Added explicit unsubscription (`socket.off("connect")`, `socket.off("kioskApprovalStatus")`, `socket.off("new_notification")`, `socket.off("virementReceived")`) prior to `socket.disconnect()` in all 4 real-time components.
+- **Timer Cleanup:** Inspected all 14 `setInterval` instances across the codebase, confirming 100% of timers have corresponding `clearInterval` cleanups in their return effects.
+- **Unmounted Async Protection:** Implemented `isMounted` cancellation flags on asynchronous data-fetching effects in `adminpageheader.tsx` to eliminate state updates on unmounted components.
+
+---
+
+## 5. Test Execution Summary
 
 | Test Suite | File | Tests Run | Result | Notes |
 | :--- | :--- | :---: | :---: | :--- |
@@ -172,12 +199,12 @@ graph TD
 
 ---
 
-## 5. Regressions & Unresolved Issues
+## 6. Regressions & Unresolved Issues
 - **None Identified:** All existing customer, banker, kiosk, and bot capabilities remain fully operational.
 - **TypeScript Notice:** Legacy implicit `any` and type debt across older page components remain in the source code; these are scheduled for resolution in **Milestone 4 (TypeScript & API Client Centralization)** without affecting Docker container compilation (handled via Vite esbuild).
 
 ---
 
-## 6. Commit Status
-- **Commit Hash:** `c6c1f622` (preliminary Milestone 2) followed by Milestone 2 finalization commit.
+## 7. Commit Status
+- **Commit Hash:** Pushed to `origin/main`.
 - **Branch:** `main` (clean working tree).

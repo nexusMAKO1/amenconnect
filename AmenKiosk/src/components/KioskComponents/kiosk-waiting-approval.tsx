@@ -45,6 +45,8 @@ const KioskWaitingApproval: React.FC<KioskWaitingApprovalProps> = ({ serialNumbe
 
     // Clean up on unmount
     return () => {
+      socket.off("connect")
+      socket.off("kioskApprovalStatus")
       socket.disconnect()
       clearInterval(timer)
     }

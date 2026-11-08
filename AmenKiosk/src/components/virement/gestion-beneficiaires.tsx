@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import type React from "react"
-import { IonIcon } from "@ionic/react"
+import { IonIcon, useIonAlert } from "@ionic/react"
 import {
   peopleOutline,
   personAddOutline,
@@ -19,6 +19,7 @@ interface GestionBeneficiairesProps {
 }
 
 const GestionBeneficiaires: React.FC<GestionBeneficiairesProps> = ({ profile }) => {
+  const [presentAlert] = useIonAlert()
   const { beneficiaires, loading, error, addBeneficiaire, updateBeneficiaire, deleteBeneficiaire, fetchBeneficiaires } =
     useBeneficiaries()
 
@@ -133,17 +134,28 @@ const GestionBeneficiaires: React.FC<GestionBeneficiairesProps> = ({ profile }) 
     }
   }
 
-  const handleDeleteBeneficiaire = async (id: string) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce bénéficiaire ?")) {
-      try {
-        await deleteBeneficiaire(id)
-        setFormSuccess("Bénéficiaire supprimé avec succès")
-        setTimeout(() => setFormSuccess(""), 3000)
-      } catch (error: any) {
-        console.error("Error deleting beneficiary:", error)
-        setFormError(error.message || "Une erreur est survenue lors de la suppression du bénéficiaire")
-      }
-    }
+  const handleDeleteBeneficiaire = (id: string) => {
+    presentAlert({
+      header: "Confirmation",
+      message: "Êtes-vous sûr de vouloir supprimer ce bénéficiaire ?",
+      buttons: [
+        { text: "Annuler", role: "cancel" },
+        {
+          text: "Supprimer",
+          role: "destructive",
+          handler: async () => {
+            try {
+              await deleteBeneficiaire(id)
+              setFormSuccess("Bénéficiaire supprimé avec succès")
+              setTimeout(() => setFormSuccess(""), 3000)
+            } catch (error: any) {
+              console.error("Error deleting beneficiary:", error)
+              setFormError(error.message || "Une erreur est survenue lors de la suppression du bénéficiaire")
+            }
+          },
+        },
+      ],
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -62,6 +62,13 @@ export default function useOtp({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
+    if (!/^\d{6}$/.test(otp)) {
+      setErrorMessage("Veuillez saisir un code OTP valide à 6 chiffres.");
+      return;
+    }
+
     setErrorMessage("");
     setIsLoading(true);
 

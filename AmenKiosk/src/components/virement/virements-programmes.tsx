@@ -68,6 +68,7 @@ const VirementsProgrammes: React.FC<VirementsProgrammesProps> = ({ profile }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setError("")
     setSuccess(false)
 
@@ -77,8 +78,15 @@ const VirementsProgrammes: React.FC<VirementsProgrammesProps> = ({ profile }) =>
       return
     }
 
-    if (Number.parseFloat(montant) <= 0) {
-      setError("Le montant doit être supérieur à 0")
+    const numMontant = Number.parseFloat(montant)
+    if (isNaN(numMontant) || numMontant <= 0) {
+      setError("Le montant doit être supérieur à 0 TND")
+      return
+    }
+
+    const selected = comptes.find((compte) => compte._id === compteSource)
+    if (selected && numMontant > selected.solde) {
+      setError(`Solde insuffisant pour la première échéance (Solde disponible: ${formatCurrency(selected.solde)})`)
       return
     }
 

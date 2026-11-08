@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useContext } from "react"
-import { IonPage, IonIcon } from "@ionic/react"
+import { IonPage, IonIcon, useIonToast, useIonAlert } from "@ionic/react"
 import {
   colorPaletteOutline,
   saveOutline,
@@ -32,6 +32,8 @@ interface ThemePreset {
 
 const ThemesPage = () => {
   const { theme, setTheme } = useContext(ThemeContext)
+  const [presentToast] = useIonToast()
+  const [presentAlert] = useIonAlert()
   const [localTheme, setLocalTheme] = useState<Theme>(theme)
   const [previewMode, setPreviewMode] = useState<"light" | "dark">("light")
   const [saveStatus, setSaveStatus] = useState<string>("")
@@ -306,7 +308,12 @@ const ThemesPage = () => {
   // Save current theme as a new preset
   const saveAsNewPreset = async () => {
     if (!newPresetName.trim()) {
-      alert("Veuillez entrer un nom pour le thème")
+      presentToast({
+        message: "Veuillez entrer un nom pour le thème.",
+        duration: 2500,
+        position: "top",
+        color: "warning",
+      })
       return
     }
 
@@ -335,12 +342,28 @@ const ThemesPage = () => {
         ])
         setNewPresetName("")
         setShowAddPreset(false)
+        presentToast({
+          message: "Thème personnalisé enregistré avec succès.",
+          duration: 2500,
+          position: "top",
+          color: "success",
+        })
       } else {
-        alert("Erreur lors de l'enregistrement du thème personnalisé")
+        presentToast({
+          message: "Erreur lors de l'enregistrement du thème personnalisé.",
+          duration: 3000,
+          position: "top",
+          color: "danger",
+        })
       }
     } catch (error) {
       console.error("Error saving custom theme preset:", error)
-      alert("Erreur lors de l'enregistrement du thème personnalisé")
+      presentToast({
+        message: "Erreur lors de l'enregistrement du thème personnalisé.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     }
   }
 
@@ -363,33 +386,79 @@ const ThemesPage = () => {
         )
         setEditingPresetId(null)
         setEditingPresetName("")
+        presentToast({
+          message: "Nom du thème mis à jour avec succès.",
+          duration: 2500,
+          position: "top",
+          color: "success",
+        })
       } else {
-        alert("Erreur lors de la mise à jour du nom du thème")
+        presentToast({
+          message: "Erreur lors de la mise à jour du nom du thème.",
+          duration: 3000,
+          position: "top",
+          color: "danger",
+        })
       }
     } catch (error) {
       console.error("Error updating preset name:", error)
-      alert("Erreur lors de la mise à jour du nom du thème")
+      presentToast({
+        message: "Erreur lors de la mise à jour du nom du thème.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     }
   }
 
   // Delete a custom preset
-  const deletePreset = async (presetId: string) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce thème ?")) {
-      try {
-        const response = await fetch(`/api/presets/${presetId}`, {
-          method: "DELETE",
-        })
+  const deletePreset = (presetId: string) => {
+    presentAlert({
+      header: "Confirmation",
+      message: "Êtes-vous sûr de vouloir supprimer ce thème personnalisé ?",
+      buttons: [
+        {
+          text: "Annuler",
+          role: "cancel",
+        },
+        {
+          text: "Supprimer",
+          role: "destructive",
+          handler: async () => {
+            try {
+              const response = await fetch(`/api/presets/${presetId}`, {
+                method: "DELETE",
+              })
 
-        if (response.ok) {
-          setThemePresets(themePresets.filter((preset) => preset.id !== presetId))
-        } else {
-          alert("Erreur lors de la suppression du thème")
-        }
-      } catch (error) {
-        console.error("Error deleting theme preset:", error)
-        alert("Erreur lors de la suppression du thème")
-      }
-    }
+              if (response.ok) {
+                setThemePresets(themePresets.filter((preset) => preset.id !== presetId))
+                presentToast({
+                  message: "Thème supprimé avec succès.",
+                  duration: 2500,
+                  position: "top",
+                  color: "success",
+                })
+              } else {
+                presentToast({
+                  message: "Erreur lors de la suppression du thème.",
+                  duration: 3000,
+                  position: "top",
+                  color: "danger",
+                })
+              }
+            } catch (error) {
+              console.error("Error deleting theme preset:", error)
+              presentToast({
+                message: "Erreur lors de la suppression du thème.",
+                duration: 3000,
+                position: "top",
+                color: "danger",
+              })
+            }
+          },
+        },
+      ],
+    })
   }
 
   // Apply a preset theme

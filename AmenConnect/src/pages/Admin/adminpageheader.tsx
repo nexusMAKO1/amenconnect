@@ -88,12 +88,15 @@ const AdminPageHeader: React.FC<AdminPageHeaderProps> = ({ title, subtitle }) =>
     });
 
     return () => {
+      socket.off("connect");
+      socket.off("new_notification");
       socket.disconnect();
     };
   }, []);
 
   // Fetch admin profile on component mount
   useEffect(() => {
+    let isMounted = true;
     const fetchProfile = async () => {
       try {
         const res = await fetch("/api/admin/profile", { credentials: "include" });
@@ -103,12 +106,17 @@ const AdminPageHeader: React.FC<AdminPageHeaderProps> = ({ title, subtitle }) =>
         }
         const data = await res.json();
         // Assuming your response contains an admin object with a name field
-        setAdminName(data.admin.name);
+        if (isMounted && data.admin?.name) {
+          setAdminName(data.admin.name);
+        }
       } catch (error) {
         console.error("Failed to fetch admin profile", error);
       }
     };
     fetchProfile();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Close notifications when clicking outside the dropdown

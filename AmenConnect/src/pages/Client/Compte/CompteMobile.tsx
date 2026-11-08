@@ -17,6 +17,7 @@ import {
   IonSelectOption,
   IonTextarea,
   IonButton,
+  useIonToast,
 } from "@ionic/react"
 import {
   statsChartOutline,
@@ -41,6 +42,7 @@ interface Transaction {
 }
 
 const CompteMobile: React.FC = () => {
+  const [presentToast] = useIonToast()
   const [today, setToday] = useState<string>("")
   const [selectedSegment, setSelectedSegment] = useState<string>("operations")
   const [typeCreditValue, setTypeCreditValue] = useState<string>("")
@@ -112,7 +114,12 @@ const CompteMobile: React.FC = () => {
       setUserCredits(data)
     } catch (error) {
       console.error("Error fetching credits:", error)
-      alert("Erreur lors du chargement des crédits")
+      presentToast({
+        message: "Erreur lors du chargement des crédits.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     } finally {
       setLoadingCredits(false)
     }
@@ -127,7 +134,13 @@ const CompteMobile: React.FC = () => {
   // Handle credit submission
   const handleSubmitCredit = async () => {
     if (!typeCreditValue || !montantValue || !dureeValue || !RevenuMensuel) {
-      return alert("Tous les champs sont obligatoires")
+      presentToast({
+        message: "Tous les champs sont obligatoires pour la demande de crédit.",
+        duration: 3000,
+        position: "top",
+        color: "warning",
+      })
+      return
     }
     setIsSubmitting(true)
     try {
@@ -147,6 +160,13 @@ const CompteMobile: React.FC = () => {
       if (!resp.ok) throw new Error("Erreur serveur")
       await fetchUserCredits()
 
+      presentToast({
+        message: "Votre demande de crédit a été enregistrée avec succès.",
+        duration: 3500,
+        position: "top",
+        color: "success",
+      })
+
       setTypeCreditValue("")
       setMontantValue(0)
       setDureeValue("")
@@ -156,7 +176,12 @@ const CompteMobile: React.FC = () => {
       setSelectedSegment("credits")
     } catch (err) {
       console.error(err)
-      alert("Impossible d'enregistrer la demande")
+      presentToast({
+        message: "Impossible d'enregistrer la demande de crédit.",
+        duration: 3000,
+        position: "top",
+        color: "danger",
+      })
     } finally {
       setIsSubmitting(false)
     }

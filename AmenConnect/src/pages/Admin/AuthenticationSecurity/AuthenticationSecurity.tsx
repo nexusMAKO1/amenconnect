@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { IonPage, IonIcon, IonInput, IonToggle, IonRange } from "@ionic/react"
+import { IonPage, IonIcon, IonInput, IonToggle, IonRange, useIonToast, useIonAlert } from "@ionic/react"
 import {
   lockClosedOutline,
   timerOutline,
@@ -16,6 +16,18 @@ import AdminPageHeader from "../adminpageheader"
 import LoadingScreen from "../../../components/loading-screen"
 const AuthenticationSecurity: React.FC = () => {
   const { authLoading } = useAdminAuth()
+  const [presentToast] = useIonToast()
+  const [presentAlert] = useIonAlert()
+
+  const showToast = (message: string, color: "success" | "danger" | "warning" = "success") => {
+    presentToast({
+      message,
+      duration: 3000,
+      position: "top",
+      color,
+    })
+  }
+
   const [activeTab, setActiveTab] = useState<"2fa" | "sessions" | "policies">("2fa")
   const [sessions, setSessions] = useState<any[]>([])
   const [inactivityTimeout, setInactivityTimeout] = useState<number>(15) // default timeout in minutes
@@ -67,31 +79,40 @@ const AuthenticationSecurity: React.FC = () => {
     }
   }
 
-  const handleTerminateSession = async (sessionId: string) => {
-    if (window.confirm("Are you sure you want to terminate this session?")) {
-      try {
-        const response = await fetch(`/api/sessions/${sessionId}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
-        const data = await response.json()
-        if (response.ok) {
-          alert(data.message || "Session terminated successfully.")
-          // Remove terminated session from state
-          setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId))
-        } else {
-          alert("Error: " + data.message)
-        }
-      } catch (error) {
-        console.error("Error terminating session:", error)
-        alert("An error occurred while terminating the session.")
-      }
-    }
+  const handleTerminateSession = (sessionId: string) => {
+    presentAlert({
+      header: "Confirmation",
+      message: "Êtes-vous sûr de vouloir mettre fin à cette session ?",
+      buttons: [
+        { text: "Annuler", role: "cancel" },
+        {
+          text: "Terminer",
+          role: "destructive",
+          handler: async () => {
+            try {
+              const response = await fetch(`/api/sessions/${sessionId}`, {
+                method: "DELETE",
+                credentials: "include",
+              })
+              const data = await response.json()
+              if (response.ok) {
+                showToast(data.message || "Session terminée avec succès.", "success")
+                setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId))
+              } else {
+                showToast("Erreur: " + data.message, "danger")
+              }
+            } catch (error) {
+              console.error("Error terminating session:", error)
+              showToast("Une erreur est survenue lors de la fermeture de la session.", "danger")
+            }
+          },
+        },
+      ],
+    })
   }
 
   const handleTimeoutChange = (value: number) => {
     setInactivityTimeout(value)
-    // Optionally, send this value to the server to update the inactivity timeout configuration.
   }
 
   const handleSave2FASettings = async () => {
@@ -105,13 +126,13 @@ const AuthenticationSecurity: React.FC = () => {
       })
       const data = await response.json()
       if (response.ok) {
-        alert(data.message || "Settings saved successfully")
+        showToast(data.message || "Paramètres 2FA enregistrés avec succès.", "success")
       } else {
-        alert("Error: " + data.message)
+        showToast("Erreur: " + data.message, "danger")
       }
     } catch (error) {
       console.error("Error saving 2FA settings:", error)
-      alert("An error occurred while saving settings.")
+      showToast("Une erreur est survenue lors de l'enregistrement des paramètres.", "danger")
     }
   }
 
